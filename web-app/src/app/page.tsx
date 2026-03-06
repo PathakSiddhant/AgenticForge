@@ -2,35 +2,61 @@
 import { useState } from "react";
 
 export default function Home() {
-  const [message, setMessage] = useState("AI Engine sleeping... 😴");
+  const [input, setInput] = useState("");
+  const [reply, setReply] = useState("AI is waiting for your command... 🤖");
+  const [loading, setLoading] = useState(false);
 
-  // Ye function tere Python API ko call karega
-  const wakeUpAI = async () => {
+  const askAI = async () => {
+    if (!input) return; // Agar input khali hai toh kuch mat karo
+    
+    setLoading(true);
+    setReply("AI Soch raha hai... 🤔");
+
     try {
-      const res = await fetch("http://localhost:8000/");
+      // Dhyan de: Ab hum POST request bhej rahe hain /chat wale endpoint par
+      const res = await fetch("http://localhost:8000/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: input }), // User ka typed message JSON format mein
+      });
+      
       const data = await res.json();
-      setMessage(data.message); // Python se aane wala message state mein set kar diya
+      setReply(data.reply); // AI ka answer screen par set kar diya
     } catch (error) {
-      setMessage("Error: Backend on nahi hai ya CORS issue hai bhai!");
+      setReply("Error: AI Engine se connect nahi ho paya ya API limit cross ho gayi bhai!");
     }
+    
+    setLoading(false);
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-24 bg-slate-950 text-white">
-      <h1 className="text-5xl font-extrabold mb-4 text-blue-400">AgenticForge</h1>
-      <p className="mb-8 text-xl font-medium text-slate-300">Architecture Status:</p>
+    <main className="flex min-h-screen flex-col items-center p-24 bg-slate-950 text-white">
+      <h1 className="text-5xl font-extrabold mb-8 text-blue-400">AgenticForge</h1>
       
-      {/* Ye box tera message dikhayega */}
-      <div className="p-6 mb-8 border border-slate-700 rounded-xl bg-slate-900 shadow-lg">
-        <p className="text-lg font-mono text-emerald-400">{message}</p>
-      </div>
+      <div className="w-full max-w-2xl flex flex-col gap-4">
+        {/* Input Field */}
+        <input 
+          type="text" 
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Apna prompt yahan type kar bhai..." 
+          className="w-full p-4 rounded-xl bg-slate-800 border border-slate-700 focus:outline-none focus:border-blue-500 text-lg text-white placeholder-slate-400"
+        />
+        
+        {/* Submit Button */}
+        <button
+          onClick={askAI}
+          disabled={loading}
+          className="w-full py-4 bg-blue-600 rounded-xl font-bold text-lg hover:bg-blue-500 transition-all disabled:opacity-50"
+        >
+          {loading ? "Processing..." : "Ask AI Engine 🚀"}
+        </button>
 
-      <button
-        onClick={wakeUpAI}
-        className="px-8 py-4 bg-blue-600 rounded-full font-bold hover:bg-blue-500 hover:scale-105 transition-all shadow-blue-500/50 shadow-lg"
-      >
-        Wake Up AI Engine 🚀
-      </button>
+        {/* AI Output Box */}
+        <div className="mt-8 p-6 border border-slate-700 rounded-xl bg-slate-900 shadow-lg min-h-[150px]">
+          <p className="text-lg text-emerald-400 whitespace-pre-wrap">{reply}</p>
+        </div>
+      </div>
     </main>
   );
 }
