@@ -4,16 +4,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
-# Apne naye agent ko import kar rahe hain
-from agents import data_structurer
-
-# Environment variables (API Key) load karo
+# 1. SABSE PEHLE ENVIRONMENT VARIABLES LOAD KARO!
 load_dotenv()
+
+# 2. USKE BAAD AGENTS IMPORT KARO (Taaki unhe API key mil jaye)
+from agents import data_structurer
+from agents import memory_bot
 
 # The Captain (Main App)
 app = FastAPI(title="AgenticForge API Engine")
 
-# Security Rules (CORS)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
@@ -22,13 +22,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ==========================================
-# ROUTING: Captain bol raha hai ki "/api/structure" pe koi aaye toh use kahan bhejna hai
-# ==========================================
+# Routing
 app.include_router(data_structurer.router)
-
-# Kal ko jab hum HR Agent banayenge, toh bas yahan ek line aur add hogi:
-# app.include_router(hr_agent.router)
+app.include_router(memory_bot.router)
 
 @app.get("/")
 def health_check():
