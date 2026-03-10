@@ -31,7 +31,7 @@ export default function SandboxCategory() {
           </div>
         </Link>
 
-{/* Basic Agent 2: Contextual Memory Bot (ACTIVE NOW) */}
+        {/* Basic Agent 2: Contextual Memory Bot (ACTIVE NOW) */}
         <Link href="/sandbox/memory-bot" className="group flex flex-col bg-white dark:bg-[#111] border border-slate-200 dark:border-white/5 rounded-2xl p-5 hover:border-pink-500/50 hover:shadow-xl dark:hover:bg-[#141414] transition-all cursor-pointer">
           <div className="flex items-start justify-between mb-4">
             <div className="w-12 h-12 rounded-xl bg-pink-50 dark:bg-pink-500/10 flex items-center justify-center text-2xl border border-pink-100 dark:border-pink-500/20">
@@ -44,6 +44,22 @@ export default function SandboxCategory() {
           <div className="flex items-center gap-2 pt-4 border-t border-slate-100 dark:border-white/5">
             <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 uppercase bg-slate-100 dark:bg-white/5 px-2 py-1 rounded">Session Array</span>
             <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 uppercase bg-slate-100 dark:bg-white/5 px-2 py-1 rounded">History API</span>
+          </div>
+        </Link>
+
+        {/* Basic Agent 3: Tool Calling AI */}
+        <Link href="/sandbox/tool-caller" className="group flex flex-col bg-white dark:bg-[#111] border border-slate-200 dark:border-white/5 rounded-2xl p-5 hover:border-cyan-500/50 hover:shadow-xl dark:hover:bg-[#141414] transition-all cursor-pointer">
+          <div className="flex items-start justify-between mb-4">
+            <div className="w-12 h-12 rounded-xl bg-cyan-50 dark:bg-cyan-500/10 flex items-center justify-center text-2xl border border-cyan-100 dark:border-cyan-500/20">
+              🛠️
+            </div>
+            <span className="text-xs font-medium text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-[#1a1a1a] px-2 py-1 rounded-md">Action</span>
+          </div>
+          <h3 className="text-lg font-bold mb-1 text-slate-900 dark:text-slate-200 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">Action Executor AI</h3>
+          <p className="text-slate-600 dark:text-slate-500 text-sm mb-4 flex-1">Give AI the ability to take actions. It will decide when to trigger external Python functions (APIs) based on your prompt.</p>
+          <div className="flex items-center gap-2 pt-4 border-t border-slate-100 dark:border-white/5">
+            <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 uppercase bg-slate-100 dark:bg-white/5 px-2 py-1 rounded">Function Calling</span>
+            <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 uppercase bg-slate-100 dark:bg-white/5 px-2 py-1 rounded">SDK Tools</span>
           </div>
         </Link>
 
