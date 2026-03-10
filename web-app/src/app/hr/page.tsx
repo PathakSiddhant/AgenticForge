@@ -37,17 +37,23 @@ export default function HrCategory() {
           </div>
         </Link>
 
-        {/* Agent 2: Interview Question Generator (Coming Soon) */}
-        <div className="group flex flex-col bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-white/5 rounded-2xl p-5 opacity-70">
+        {/* Agent 2: Interview Planner AI (Active) */}
+        <Link href="/hr/interview-planner" className="group flex flex-col bg-white dark:bg-[#111] border border-slate-200 dark:border-white/5 rounded-2xl p-5 hover:border-violet-500/50 hover:shadow-xl dark:hover:bg-[#141414] transition-all cursor-pointer">
           <div className="flex items-start justify-between mb-4">
-            <div className="w-12 h-12 rounded-xl bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-2xl border border-slate-300 dark:border-slate-700 grayscale">
+            <div className="w-12 h-12 rounded-xl bg-violet-50 dark:bg-violet-500/10 flex items-center justify-center text-2xl border border-violet-100 dark:border-violet-500/20">
               🎤
             </div>
-            <span className="text-xs font-medium text-slate-500 bg-slate-200 dark:bg-[#1a1a1a] px-2 py-1 rounded-md">Coming Soon</span>
+            <span className="text-xs font-medium text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/20 px-2 py-1 rounded-md">
+              Active
+            </span>
           </div>
-          <h3 className="text-lg font-bold mb-1 text-slate-500 dark:text-slate-400">Interview Planner AI</h3>
-          <p className="text-slate-500 dark:text-slate-600 text-sm mb-4 flex-1">Generates customized technical and behavioral interview questions based on the candidate&apos;s unique resume.</p>
-        </div>
+          <h3 className="text-lg font-bold mb-1 text-slate-900 dark:text-slate-200 group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">Interview Planner AI</h3>
+          <p className="text-slate-600 dark:text-slate-500 text-sm mb-4 flex-1">Generates customized technical and behavioral interview questions to verify candidate claims.</p>
+          <div className="flex items-center gap-2 pt-4 border-t border-slate-100 dark:border-white/5">
+            <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 uppercase bg-slate-100 dark:bg-white/5 px-2 py-1 rounded">Custom Interrogation</span>
+            <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 uppercase bg-slate-100 dark:bg-white/5 px-2 py-1 rounded">PDF Input</span>
+          </div>
+        </Link>
 
         {/* Agent 3: Onboarding Assistant (Coming Soon) */}
         <div className="group flex flex-col bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-white/5 rounded-2xl p-5 opacity-70">
