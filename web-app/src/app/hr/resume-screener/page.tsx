@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 
 interface ScreeningData {
@@ -12,43 +12,63 @@ interface ScreeningData {
 
 export default function ResumeScreenerDashboard() {
   const [jd, setJd] = useState("");
-  const [resume, setResume] = useState("");
+  const [file, setFile] = useState<File | null>(null);
   const [data, setData] = useState<ScreeningData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [uploadStatus, setUploadStatus] = useState<string>("");
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const selectedFile = e.target.files[0];
+      if (selectedFile.type !== "application/pdf") {
+        setError("Please upload a valid PDF file.");
+        setFile(null);
+        return;
+      }
+      setFile(selectedFile);
+      setError(null);
+    }
+  };
+
+  // Naya analyzeResume function jo direct Python API se baat karega
   const analyzeResume = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!jd.trim() || !resume.trim()) return;
+    if (!jd.trim() || !file) return;
     
     setLoading(true);
     setError(null);
     setData(null);
+    setUploadStatus("Sending PDF to AI Engine...");
 
     try {
-      const res = await fetch("http://localhost:8000/api/hr/resume-screener", {
+      // 1. Direct Multipart Form Data banaya
+      const formData = new FormData();
+      formData.append("job_description", jd);
+      formData.append("file", file);
+
+      // 2. Seedha Python API ko bhej diya (No JSON headers!)
+      const aiRes = await fetch("http://localhost:8000/api/hr/resume-screener", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          job_description: jd,
-          resume_text: resume
-        }),
+        body: formData, // Browser khud isko file aur text mein set kar lega
       });
       
-      const result = await res.json();
+      const result = await aiRes.json();
       if (result.error) {
         setError(result.error);
       } else {
         setData(result.analysis);
       }
-    } catch (err) {
-      setError("Backend se connect nahi ho paya. Is your Python server running?");
+    } catch (err: any) {
+      setError("AI Engine se connect nahi ho paya. Is Python Uvicorn running?");
     }
     
     setLoading(false);
+    setUploadStatus("");
   };
 
-  // Score & Verdict styling logic
   const getScoreColor = (score: number) => {
     if (score >= 80) return "text-emerald-500";
     if (score >= 50) return "text-amber-500";
@@ -64,7 +84,6 @@ export default function ResumeScreenerDashboard() {
 
   return (
     <div className="max-w-6xl mx-auto pb-12">
-      {/* Header Section */}
       <div className="mb-8">
         <Link href="/hr" className="inline-flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 mb-6 transition-colors">
           <span>←</span> Back to HR
@@ -75,14 +94,14 @@ export default function ResumeScreenerDashboard() {
           </div>
           <div>
             <h1 className="text-3xl font-bold text-slate-900 dark:text-white">AI Resume Screener</h1>
-            <p className="text-slate-600 dark:text-slate-400 mt-1">Instant candidate evaluation and ATS scorecard generation.</p>
+            <p className="text-slate-600 dark:text-slate-400 mt-1">Upload a PDF resume and instantly evaluate it against your Job Description.</p>
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         
-        {/* Left Column: Input Forms */}
+        {/* Left Column: Input Panel */}
         <div className="bg-white dark:bg-[#111] border border-slate-200 dark:border-white/5 rounded-2xl p-6 shadow-sm h-fit">
           <form onSubmit={analyzeResume} className="space-y-6">
             
@@ -93,7 +112,7 @@ export default function ResumeScreenerDashboard() {
               <textarea
                 value={jd}
                 onChange={(e) => setJd(e.target.value)}
-                placeholder="Paste the requirements (e.g., Need a React & Next.js developer with 3 years of experience...)"
+                placeholder="Paste the job requirements here..."
                 className="w-full h-32 bg-slate-50 dark:bg-[#141414] border border-slate-200 dark:border-white/10 rounded-xl p-4 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-rose-500/50 resize-none text-sm"
                 disabled={loading}
               />
@@ -101,26 +120,44 @@ export default function ResumeScreenerDashboard() {
 
             <div>
               <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase tracking-wider">
-                2. Candidate Resume
+                2. Upload Candidate Resume (PDF)
               </label>
-              <textarea
-                value={resume}
-                onChange={(e) => setResume(e.target.value)}
-                placeholder="Paste the candidate's resume text here..."
-                className="w-full h-48 bg-slate-50 dark:bg-[#141414] border border-slate-200 dark:border-white/10 rounded-xl p-4 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-rose-500/50 resize-none text-sm"
-                disabled={loading}
-              />
+              <div 
+                onClick={() => fileInputRef.current?.click()}
+                className={`w-full h-32 border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer transition-colors ${file ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/10' : 'border-slate-300 dark:border-white/10 hover:border-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/10'}`}
+              >
+                <input 
+                  type="file" 
+                  accept="application/pdf"
+                  className="hidden" 
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                />
+                {file ? (
+                  <div className="text-center">
+                    <span className="text-emerald-500 text-3xl block mb-2">✓</span>
+                    <p className="text-sm font-bold text-slate-700 dark:text-slate-300">{file.name}</p>
+                    <p className="text-xs text-slate-500 mt-1">Click to change file</p>
+                  </div>
+                ) : (
+                  <div className="text-center text-slate-500">
+                    <span className="text-3xl block mb-2">📂</span>
+                    <p className="text-sm font-medium">Click to upload PDF</p>
+                    <p className="text-xs mt-1">Strictly PDF files only</p>
+                  </div>
+                )}
+              </div>
             </div>
 
             <button
               type="submit"
-              disabled={loading || !jd.trim() || !resume.trim()}
+              disabled={loading || !jd.trim() || !file}
               className="w-full bg-rose-600 hover:bg-rose-500 text-white py-4 rounded-xl font-medium transition-colors disabled:opacity-50 flex justify-center items-center gap-2"
             >
               {loading ? (
-                <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Screening Candidate...</>
+                <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> {uploadStatus}</>
               ) : (
-                "Generate ATS Scorecard"
+                "Upload & Generate Scorecard"
               )}
             </button>
           </form>
@@ -132,13 +169,10 @@ export default function ResumeScreenerDashboard() {
           )}
         </div>
 
-        {/* Right Column: The Scorecard Dashboard */}
+        {/* Right Column: The Scorecard */}
         <div className="bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-white/5 rounded-2xl p-6 shadow-inner flex flex-col relative overflow-hidden">
-          
           {data ? (
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500 z-10 relative">
-              
-              {/* Top Row: Score & Verdict */}
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="bg-white dark:bg-[#111] border border-slate-200 dark:border-white/5 p-5 rounded-xl flex-1 flex flex-col items-center justify-center text-center">
                   <span className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Match Score</span>
@@ -146,7 +180,6 @@ export default function ResumeScreenerDashboard() {
                     {data.match_score}<span className="text-xl text-slate-400">%</span>
                   </div>
                 </div>
-                
                 <div className="bg-white dark:bg-[#111] border border-slate-200 dark:border-white/5 p-5 rounded-xl flex-1 flex flex-col items-center justify-center text-center">
                   <span className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Final Verdict</span>
                   <span className={`px-4 py-2 font-bold rounded-lg border ${getVerdictBadge(data.verdict)}`}>
@@ -154,16 +187,12 @@ export default function ResumeScreenerDashboard() {
                   </span>
                 </div>
               </div>
-
-              {/* HR Notes */}
               <div>
                 <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">HR Notes / Summary</h3>
                 <div className="bg-white dark:bg-[#1a1a1a] border border-slate-200 dark:border-white/5 p-4 rounded-xl text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
                   {data.hr_notes}
                 </div>
               </div>
-
-              {/* Strengths & Missing Grid */}
               <div className="grid grid-cols-1 gap-4">
                 <div className="bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-500/20 rounded-xl p-4">
                   <h4 className="text-emerald-700 dark:text-emerald-400 font-bold text-sm mb-3 flex items-center gap-2">
@@ -177,7 +206,6 @@ export default function ResumeScreenerDashboard() {
                     ))}
                   </ul>
                 </div>
-
                 <div className="bg-rose-50/50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-500/20 rounded-xl p-4">
                   <h4 className="text-rose-700 dark:text-rose-400 font-bold text-sm mb-3 flex items-center gap-2">
                     <span>❌</span> Missing Requirements
@@ -195,20 +223,17 @@ export default function ResumeScreenerDashboard() {
                   )}
                 </div>
               </div>
-
             </div>
           ) : (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-10 z-0">
               <div className="w-20 h-20 mb-4 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-4xl grayscale opacity-50">
                 ⚖️
               </div>
-              <h3 className="text-lg font-bold text-slate-500 dark:text-slate-400">Awaiting Data</h3>
-              <p className="text-slate-400 dark:text-slate-500 text-sm max-w-xs mt-2">Paste the Job Description and the Candidate&apos;s Resume to generate a comprehensive ATS scorecard.</p>
+              <h3 className="text-lg font-bold text-slate-500 dark:text-slate-400">Awaiting Resume</h3>
+              <p className="text-slate-400 dark:text-slate-500 text-sm max-w-xs mt-2">Upload a candidate&apos;s PDF resume to automatically parse and analyze it.</p>
             </div>
           )}
-
         </div>
-
       </div>
     </div>
   );
