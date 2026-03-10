@@ -10,6 +10,7 @@ load_dotenv()
 # 2. USKE BAAD AGENTS IMPORT KARO (Taaki unhe API key mil jaye)
 from agents import data_structurer
 from agents import memory_bot
+from agents import tool_caller
 
 # The Captain (Main App)
 app = FastAPI(title="AgenticForge API Engine")
@@ -25,6 +26,7 @@ app.add_middleware(
 # Routing
 app.include_router(data_structurer.router)
 app.include_router(memory_bot.router)
+app.include_router(tool_caller.router)
 
 @app.get("/")
 def health_check():
