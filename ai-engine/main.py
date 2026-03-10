@@ -14,6 +14,7 @@ from agents import tool_caller
 from agents import document_reader
 from agents import market_intel
 from agents import portfolio_risk
+from agents import earnings_rag
 
 # The Captain (Main App)
 app = FastAPI(title="AgenticForge API Engine")
@@ -33,6 +34,7 @@ app.include_router(tool_caller.router)
 app.include_router(document_reader.router)
 app.include_router(market_intel.router)
 app.include_router(portfolio_risk.router)
+app.include_router(earnings_rag.router)
 
 @app.get("/")
 def health_check():
