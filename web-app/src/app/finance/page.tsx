@@ -35,17 +35,23 @@ export default function FinanceCategory() {
           </div>
         </Link>
 
-        {/* Agent 2: Portfolio Risk Analyzer (Coming Soon) */}
-        <div className="group flex flex-col bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-white/5 rounded-2xl p-5 opacity-70">
+        {/* Agent 2: Portfolio Risk Analyzer (Active) */}
+        <Link href="/finance/portfolio-risk" className="group flex flex-col bg-white dark:bg-[#111] border border-slate-200 dark:border-white/5 rounded-2xl p-5 hover:border-purple-500/50 hover:shadow-xl dark:hover:bg-[#141414] transition-all cursor-pointer">
           <div className="flex items-start justify-between mb-4">
-            <div className="w-12 h-12 rounded-xl bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-2xl border border-slate-300 dark:border-slate-700 grayscale">
+            <div className="w-12 h-12 rounded-xl bg-purple-50 dark:bg-purple-500/10 flex items-center justify-center text-2xl border border-purple-100 dark:border-purple-500/20">
               ⚖️
             </div>
-            <span className="text-xs font-medium text-slate-500 bg-slate-200 dark:bg-[#1a1a1a] px-2 py-1 rounded-md">Coming Soon</span>
+            <span className="text-xs font-medium text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/20 px-2 py-1 rounded-md">
+              Active
+            </span>
           </div>
-          <h3 className="text-lg font-bold mb-1 text-slate-500 dark:text-slate-400">Risk Assessment Bot</h3>
-          <p className="text-slate-500 dark:text-slate-600 text-sm mb-4 flex-1">Analyzes user portfolios against live market volatility to calculate dynamic risk scores.</p>
-        </div>
+          <h3 className="text-lg font-bold mb-1 text-slate-900 dark:text-slate-200 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">Portfolio Risk AI</h3>
+          <p className="text-slate-600 dark:text-slate-500 text-sm mb-4 flex-1">Analyzes user holdings against market outlook to calculate strict risk scores and provide actionable rebalancing advice.</p>
+          <div className="flex items-center gap-2 pt-4 border-t border-slate-100 dark:border-white/5">
+            <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 uppercase bg-slate-100 dark:bg-white/5 px-2 py-1 rounded">Risk Modeling</span>
+            <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 uppercase bg-slate-100 dark:bg-white/5 px-2 py-1 rounded">JSON Output</span>
+          </div>
+        </Link>
 
         {/* Agent 3: Financial Statement Reader (Coming Soon) */}
         <div className="group flex flex-col bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-white/5 rounded-2xl p-5 opacity-70">
