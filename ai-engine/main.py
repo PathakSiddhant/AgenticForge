@@ -22,6 +22,9 @@ from agents import resume_screener
 from agents import interview_planner
 from agents import onboarding_rag
 
+# Agents (Education and Research)
+from agents import research_analyzer
+
 app = FastAPI(title="AgenticForge API Engine")
 
 app.add_middleware(
@@ -47,6 +50,9 @@ app.include_router(earnings_rag.router)
 app.include_router(resume_screener.router)
 app.include_router(interview_planner.router)
 app.include_router(onboarding_rag.router)
+
+# Routing Edu-Research
+app.include_router(research_analyzer.router)
 
 @app.get("/")
 def health_check():
