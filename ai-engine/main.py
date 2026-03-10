@@ -4,19 +4,22 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
-# 1. SABSE PEHLE ENVIRONMENT VARIABLES LOAD KARO!
 load_dotenv()
 
-# 2. USKE BAAD AGENTS IMPORT KARO (Taaki unhe API key mil jaye)
+# Agents (Base)
 from agents import data_structurer
 from agents import memory_bot
 from agents import tool_caller
 from agents import document_reader
+
+# Agents (Finance)
 from agents import market_intel
 from agents import portfolio_risk
 from agents import earnings_rag
 
-# The Captain (Main App)
+# Agents (HR)
+from agents import resume_screener
+
 app = FastAPI(title="AgenticForge API Engine")
 
 app.add_middleware(
@@ -27,14 +30,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Routing
+# Routing Base
 app.include_router(data_structurer.router)
 app.include_router(memory_bot.router)
 app.include_router(tool_caller.router)
 app.include_router(document_reader.router)
+
+# Routing Finance
 app.include_router(market_intel.router)
 app.include_router(portfolio_risk.router)
 app.include_router(earnings_rag.router)
+
+# Routing HR
+app.include_router(resume_screener.router)
 
 @app.get("/")
 def health_check():
