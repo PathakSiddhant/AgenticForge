@@ -19,6 +19,7 @@ from agents import earnings_rag
 
 # Agents (HR)
 from agents import resume_screener
+from agents import interview_planner
 
 app = FastAPI(title="AgenticForge API Engine")
 
@@ -43,6 +44,7 @@ app.include_router(earnings_rag.router)
 
 # Routing HR
 app.include_router(resume_screener.router)
+app.include_router(interview_planner.router)
 
 @app.get("/")
 def health_check():
