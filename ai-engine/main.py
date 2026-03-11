@@ -25,6 +25,7 @@ from agents import onboarding_rag
 # Agents (Education and Research)
 from agents import research_analyzer
 from agents import edu_planner
+from agents import essay_evaluator
 
 app = FastAPI(title="AgenticForge API Engine")
 
@@ -55,6 +56,7 @@ app.include_router(onboarding_rag.router)
 # Routing Edu-Research
 app.include_router(research_analyzer.router)
 app.include_router(edu_planner.router)
+app.include_router(essay_evaluator.router)
 
 @app.get("/")
 def health_check():
