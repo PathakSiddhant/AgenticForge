@@ -29,6 +29,7 @@ from agents import essay_evaluator
 
 # Agents (Sales & Marketing)
 from agents import cold_outreach
+from agents import seo_analyzer
 
 app = FastAPI(title="AgenticForge API Engine")
 
@@ -63,6 +64,7 @@ app.include_router(essay_evaluator.router)
 
 # Routing Sales
 app.include_router(cold_outreach.router)
+app.include_router(seo_analyzer.router)
 
 @app.get("/")
 def health_check():
