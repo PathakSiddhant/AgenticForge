@@ -27,6 +27,9 @@ from agents import research_analyzer
 from agents import edu_planner
 from agents import essay_evaluator
 
+# Agents (Sales & Marketing)
+from agents import cold_outreach
+
 app = FastAPI(title="AgenticForge API Engine")
 
 app.add_middleware(
@@ -57,6 +60,9 @@ app.include_router(onboarding_rag.router)
 app.include_router(research_analyzer.router)
 app.include_router(edu_planner.router)
 app.include_router(essay_evaluator.router)
+
+# Routing Sales
+app.include_router(cold_outreach.router)
 
 @app.get("/")
 def health_check():
