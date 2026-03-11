@@ -55,17 +55,23 @@ export default function SalesCategory() {
           </div>
         </Link>
 
-        {/* Agent 3: Coming Soon */}
-        <div className="group flex flex-col bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-white/5 rounded-2xl p-5 opacity-70">
+        {/* Agent 3: Customer Churn Predictor (Active) */}
+        <Link href="/sales/churn-predictor" className="group flex flex-col bg-white dark:bg-[#111] border border-slate-200 dark:border-white/5 rounded-2xl p-5 hover:border-rose-500/50 hover:shadow-xl dark:hover:bg-[#141414] transition-all cursor-pointer">
           <div className="flex items-start justify-between mb-4">
-            <div className="w-12 h-12 rounded-xl bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-2xl border border-slate-300 dark:border-slate-700 grayscale">
+            <div className="w-12 h-12 rounded-xl bg-rose-50 dark:bg-rose-500/10 flex items-center justify-center text-2xl border border-rose-100 dark:border-rose-500/20">
               📉
             </div>
-            <span className="text-xs font-medium text-slate-500 bg-slate-200 dark:bg-[#1a1a1a] px-2 py-1 rounded-md">Coming Soon</span>
+            <span className="text-xs font-medium text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 px-2 py-1 rounded-md">
+              Active
+            </span>
           </div>
-          <h3 className="text-lg font-bold mb-1 text-slate-500 dark:text-slate-400">Customer Churn Predictor</h3>
-          <p className="text-slate-500 dark:text-slate-600 text-sm mb-4 flex-1">Analyzes support tickets to predict if a customer is at high risk of leaving your service.</p>
-        </div>
+          <h3 className="text-lg font-bold mb-1 text-slate-900 dark:text-slate-200 group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors">Customer Churn Predictor</h3>
+          <p className="text-slate-600 dark:text-slate-500 text-sm mb-4 flex-1">Analyzes support tickets and emails to predict if a customer is at high risk of canceling their subscription.</p>
+          <div className="flex items-center gap-2 pt-4 border-t border-slate-100 dark:border-white/5">
+            <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 uppercase bg-slate-100 dark:bg-white/5 px-2 py-1 rounded">Sentiment AI</span>
+            <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 uppercase bg-slate-100 dark:bg-white/5 px-2 py-1 rounded">Risk Analysis</span>
+          </div>
+        </Link>
 
       </div>
     </div>
