@@ -45,11 +45,9 @@ export default function RootLayout({
               <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Categories</p>
             </div>
             
-            {/* NAYA TAB: Developer Sandbox */}
             <Link href="/sandbox" className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white transition-colors">
               <span className="text-lg">🛠️</span> Developer Sandbox
             </Link>
-
             <Link href="/finance" className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white transition-colors">
               <span className="text-lg">📈</span> Finance & Trading
             </Link>
@@ -59,12 +57,17 @@ export default function RootLayout({
             <Link href="/education" className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white transition-colors">
               <span className="text-lg">🎓</span> Education & Research
             </Link>
-
-            {/* NAYA TAB: Sales & Marketing */}
             <Link href="/sales" className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white transition-colors">
               <span className="text-lg">💸</span> Sales & Marketing
             </Link>
+            <Link href="/support" className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white transition-colors">
+              <span className="text-lg">🎧</span> Customer Support
+            </Link>
+
+            
           </nav>
+
+          
 
           <div className="p-4">
             <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5">
