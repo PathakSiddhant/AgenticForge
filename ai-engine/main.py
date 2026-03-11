@@ -32,6 +32,9 @@ from agents import cold_outreach
 from agents import seo_analyzer
 from agents import churn_predictor
 
+# Agents (Customer Support)
+from agents import ticket_router
+
 app = FastAPI(title="AgenticForge API Engine")
 
 app.add_middleware(
@@ -67,6 +70,9 @@ app.include_router(essay_evaluator.router)
 app.include_router(cold_outreach.router)
 app.include_router(seo_analyzer.router)
 app.include_router(churn_predictor.router)
+
+# Routing Support
+app.include_router(ticket_router.router)
 
 @app.get("/")
 def health_check():
