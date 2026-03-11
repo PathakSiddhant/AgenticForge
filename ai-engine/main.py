@@ -35,6 +35,7 @@ from agents import churn_predictor
 # Agents (Customer Support)
 from agents import ticket_router
 from agents import auto_responder
+from agents import refund_automator
 
 app = FastAPI(title="AgenticForge API Engine")
 
@@ -75,6 +76,7 @@ app.include_router(churn_predictor.router)
 # Routing Support
 app.include_router(ticket_router.router)
 app.include_router(auto_responder.router)
+app.include_router(refund_automator.router)
 
 @app.get("/")
 def health_check():
