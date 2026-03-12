@@ -45,6 +45,7 @@ from agents import freight_optimizer
 # Agents (Media & Content Agency)
 from agents import viral_hook_generator
 from agents import raw_scriptwriter
+from agents import content_repurposer
 
 app = FastAPI(title="AgenticForge API Engine")
 
@@ -95,6 +96,7 @@ app.include_router(freight_optimizer.router)
 # Routing Media
 app.include_router(viral_hook_generator.router)
 app.include_router(raw_scriptwriter.router)
+app.include_router(content_repurposer.router)
 
 @app.get("/")
 def health_check():
