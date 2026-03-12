@@ -157,6 +157,21 @@ export default function Home() {
           </div>
         </Link>
 
+        <Link href="/media/viral-hook" className="group flex flex-col bg-white dark:bg-[#111] border border-slate-200 dark:border-white/5 rounded-2xl p-5 hover:border-fuchsia-500/50 hover:shadow-xl dark:hover:bg-[#141414] transition-all cursor-pointer">
+          <div className="flex items-start justify-between mb-4">
+            <div className="w-12 h-12 rounded-xl bg-fuchsia-50 dark:bg-fuchsia-500/10 flex items-center justify-center text-2xl border border-fuchsia-100 dark:border-fuchsia-500/20">
+              🧲
+            </div>
+            <span className="text-xs font-medium text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-[#1a1a1a] px-2 py-1 rounded-md">Media</span>
+          </div>
+          <h3 className="text-lg font-bold mb-1 text-slate-900 dark:text-slate-200 group-hover:text-fuchsia-600 dark:group-hover:text-fuchsia-400 transition-colors">Viral Hook Architect</h3>
+          <p className="text-slate-600 dark:text-slate-500 text-sm mb-4 flex-1">Generates psychological, anti-AI sounding video hooks designed to maximize the first 3 seconds of viewer retention.</p>
+          <div className="flex items-center gap-2 pt-4 border-t border-slate-100 dark:border-white/5">
+            <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 uppercase bg-slate-100 dark:bg-white/5 px-2 py-1 rounded">Creative AI</span>
+            <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 uppercase bg-slate-100 dark:bg-white/5 px-2 py-1 rounded">Retention</span>
+          </div>
+        </Link>
+
       </div>
     </div>
   );

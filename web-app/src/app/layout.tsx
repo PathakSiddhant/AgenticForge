@@ -66,7 +66,9 @@ export default function RootLayout({
             <Link href="/logistics" className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white transition-colors">
               <span className="text-lg">📦</span> Logistics & Supply Chain
             </Link>
-            
+            <Link href="/media" className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white transition-colors">
+              <span className="text-lg">🎬</span> Media & Content
+            </Link>
           </nav>
 
           
