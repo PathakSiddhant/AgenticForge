@@ -41,4 +41,10 @@ export const ALL_AGENTS = [
   { name: "Viral Hook Architect", category: "Media & Content", href: "/media/viral-hook" },
   { name: "The Raw Scriptwriter", category: "Media & Content", href: "/media/raw-scriptwriter" },
   { name: "The Content Repurposer", category: "Media & Content", href: "/media/content-repurposer" },
+
+  // ✈️ Travel & Event Management
+  { name: "Hyper-Personalized Itinerary", category: "Travel & Event Management", href: "/travel/itinerary-planner" },
+  
+
+
 ];
