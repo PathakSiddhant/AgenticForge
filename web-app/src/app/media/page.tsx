@@ -37,17 +37,24 @@ export default function MediaCategory() {
           </div>
         </Link>
 
-        {/* Agent 2: Coming Soon */}
-        <div className="group flex flex-col bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-white/5 rounded-2xl p-5 opacity-70">
+
+        {/* Agent 2: The Raw Scriptwriter (Active) */}
+        <Link href="/media/raw-scriptwriter" className="group flex flex-col bg-white dark:bg-[#111] border border-slate-200 dark:border-white/5 rounded-2xl p-5 hover:border-pink-500/50 hover:shadow-xl dark:hover:bg-[#141414] transition-all cursor-pointer">
           <div className="flex items-start justify-between mb-4">
-            <div className="w-12 h-12 rounded-xl bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-2xl border border-slate-300 dark:border-slate-700 grayscale">
+            <div className="w-12 h-12 rounded-xl bg-pink-50 dark:bg-pink-500/10 flex items-center justify-center text-2xl border border-pink-100 dark:border-pink-500/20">
               ✍️
             </div>
-            <span className="text-xs font-medium text-slate-500 bg-slate-200 dark:bg-[#1a1a1a] px-2 py-1 rounded-md">Coming Next</span>
+            <span className="text-xs font-medium text-pink-600 dark:text-pink-400 bg-pink-50 dark:bg-pink-500/10 border border-pink-200 dark:border-pink-500/20 px-2 py-1 rounded-md">
+              Active
+            </span>
           </div>
-          <h3 className="text-lg font-bold mb-1 text-slate-500 dark:text-slate-400">The Raw Scriptwriter</h3>
-          <p className="text-slate-500 dark:text-slate-600 text-sm mb-4 flex-1">Generates full-length video scripts with a conversational, high-energy tone perfect for engaging edits.</p>
-        </div>
+          <h3 className="text-lg font-bold mb-1 text-slate-900 dark:text-slate-200 group-hover:text-pink-600 dark:group-hover:text-pink-400 transition-colors">The Raw Scriptwriter</h3>
+          <p className="text-slate-600 dark:text-slate-500 text-sm mb-4 flex-1">Generates full-length video scripts with a conversational, high-energy tone perfect for engaging edits. Zero AI buzzwords.</p>
+          <div className="flex items-center gap-2 pt-4 border-t border-slate-100 dark:border-white/5">
+            <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 uppercase bg-slate-100 dark:bg-white/5 px-2 py-1 rounded">Storytelling</span>
+            <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 uppercase bg-slate-100 dark:bg-white/5 px-2 py-1 rounded">Pacing</span>
+          </div>
+        </Link>
 
       </div>
     </div>
