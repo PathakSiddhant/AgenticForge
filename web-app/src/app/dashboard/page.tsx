@@ -1,3 +1,4 @@
+// Path: web-app/src/app/dashboard/page.tsx
 import Link from "next/link";
 
 export default function Home() {
@@ -20,7 +21,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* NAYA SECTION: Developer Sandbox (Proof of Work) */}
+      {/* Developer Sandbox (Proof of Work) */}
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
           <span>🛠️</span> The Sandbox <span className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-2 py-1 rounded-full border border-purple-200 dark:border-purple-500/20">Basics & Fundamentals</span>
@@ -53,7 +54,7 @@ export default function Home() {
         </Link>
       </div>
 
-      {/* PURANA SECTION: Industry Agents Grid */}
+      {/* Industry Agents Grid */}
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Industry Agents</h2>
       </div>
@@ -108,7 +109,7 @@ export default function Home() {
           </div>
         </Link>
 
-        {/* NAYA SALES AGENT CARD */}
+        {/* Sales Agent Card */}
         <Link href="/sales/cold-outreach" className="group flex flex-col bg-white dark:bg-[#111] border border-slate-200 dark:border-white/5 rounded-2xl p-5 hover:border-orange-500/50 hover:shadow-xl dark:hover:bg-[#141414] transition-all cursor-pointer">
           <div className="flex items-start justify-between mb-4">
             <div className="w-12 h-12 rounded-xl bg-orange-50 dark:bg-orange-500/10 flex items-center justify-center text-2xl border border-orange-100 dark:border-orange-500/20">
@@ -124,7 +125,7 @@ export default function Home() {
           </div>
         </Link>
 
-        {/* NAYA SUPPORT AGENT CARD */}
+        {/* Support Agent Card */}
         <Link href="/support/ticket-router" className="group flex flex-col bg-white dark:bg-[#111] border border-slate-200 dark:border-white/5 rounded-2xl p-5 hover:border-teal-500/50 hover:shadow-xl dark:hover:bg-[#141414] transition-all cursor-pointer">
           <div className="flex items-start justify-between mb-4">
             <div className="w-12 h-12 rounded-xl bg-teal-50 dark:bg-teal-500/10 flex items-center justify-center text-2xl border border-teal-100 dark:border-teal-500/20">
@@ -140,7 +141,7 @@ export default function Home() {
           </div>
         </Link>
 
-        {/* NAYA LOGISTICS AGENT CARD */}
+        {/* Logistics Agent Card */}
         <Link href="/logistics/inventory-forecaster" className="group flex flex-col bg-white dark:bg-[#111] border border-slate-200 dark:border-white/5 rounded-2xl p-5 hover:border-amber-500/50 hover:shadow-xl dark:hover:bg-[#141414] transition-all cursor-pointer">
           <div className="flex items-start justify-between mb-4">
             <div className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center text-2xl border border-amber-100 dark:border-amber-500/20">
@@ -156,6 +157,7 @@ export default function Home() {
           </div>
         </Link>
 
+        {/* Media Agent Card */}
         <Link href="/media/viral-hook" className="group flex flex-col bg-white dark:bg-[#111] border border-slate-200 dark:border-white/5 rounded-2xl p-5 hover:border-fuchsia-500/50 hover:shadow-xl dark:hover:bg-[#141414] transition-all cursor-pointer">
           <div className="flex items-start justify-between mb-4">
             <div className="w-12 h-12 rounded-xl bg-fuchsia-50 dark:bg-fuchsia-500/10 flex items-center justify-center text-2xl border border-fuchsia-100 dark:border-fuchsia-500/20">
@@ -168,6 +170,22 @@ export default function Home() {
           <div className="flex items-center gap-2 pt-4 border-t border-slate-100 dark:border-white/5">
             <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 uppercase bg-slate-100 dark:bg-white/5 px-2 py-1 rounded">Creative AI</span>
             <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 uppercase bg-slate-100 dark:bg-white/5 px-2 py-1 rounded">Retention</span>
+          </div>
+        </Link>
+
+        {/* NAYA TRAVEL AGENT CARD */}
+        <Link href="/travel/itinerary-planner" className="group flex flex-col bg-white dark:bg-[#111] border border-slate-200 dark:border-white/5 rounded-2xl p-5 hover:border-sky-500/50 hover:shadow-xl dark:hover:bg-[#141414] transition-all cursor-pointer">
+          <div className="flex items-start justify-between mb-4">
+            <div className="w-12 h-12 rounded-xl bg-sky-50 dark:bg-sky-500/10 flex items-center justify-center text-2xl border border-sky-100 dark:border-sky-500/20">
+              🗺️
+            </div>
+            <span className="text-xs font-medium text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-[#1a1a1a] px-2 py-1 rounded-md">Travel</span>
+          </div>
+          <h3 className="text-lg font-bold mb-1 text-slate-900 dark:text-slate-200 group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">Hyper-Personalized Itinerary</h3>
+          <p className="text-slate-600 dark:text-slate-500 text-sm mb-4 flex-1">Generate a realistic, day-by-day travel schedule with estimated costs based on exact vibes and budget.</p>
+          <div className="flex items-center gap-2 pt-4 border-t border-slate-100 dark:border-white/5">
+            <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 uppercase bg-slate-100 dark:bg-white/5 px-2 py-1 rounded">Predictive AI</span>
+            <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 uppercase bg-slate-100 dark:bg-white/5 px-2 py-1 rounded">JSON</span>
           </div>
         </Link>
 
