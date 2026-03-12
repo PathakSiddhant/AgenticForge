@@ -42,6 +42,9 @@ from agents import inventory_forecaster
 from agents import supplier_risk
 from agents import freight_optimizer
 
+# Agents (Media & Content Agency)
+from agents import viral_hook_generator
+
 app = FastAPI(title="AgenticForge API Engine")
 
 app.add_middleware(
@@ -87,6 +90,9 @@ app.include_router(refund_automator.router)
 app.include_router(inventory_forecaster.router)
 app.include_router(supplier_risk.router)
 app.include_router(freight_optimizer.router)
+
+# Routing Media
+app.include_router(viral_hook_generator.router)
 
 @app.get("/")
 def health_check():
