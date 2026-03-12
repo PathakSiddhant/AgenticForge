@@ -47,6 +47,9 @@ from agents import viral_hook_generator
 from agents import raw_scriptwriter
 from agents import content_repurposer
 
+# Agents (Travel & Event Management)
+from agents import itinerary_planner
+
 app = FastAPI(title="AgenticForge API Engine")
 
 app.add_middleware(
@@ -97,6 +100,9 @@ app.include_router(freight_optimizer.router)
 app.include_router(viral_hook_generator.router)
 app.include_router(raw_scriptwriter.router)
 app.include_router(content_repurposer.router)
+
+# Routing Travel
+app.include_router(itinerary_planner.router)
 
 @app.get("/")
 def health_check():
