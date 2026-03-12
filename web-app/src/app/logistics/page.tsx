@@ -37,17 +37,23 @@ export default function LogisticsCategory() {
           </div>
         </Link>
 
-        {/* Agent 2: Coming Soon */}
-        <div className="group flex flex-col bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-white/5 rounded-2xl p-5 opacity-70">
+        {/* Agent 2: Supplier Risk Evaluator (Active) */}
+        <Link href="/logistics/supplier-risk" className="group flex flex-col bg-white dark:bg-[#111] border border-slate-200 dark:border-white/5 rounded-2xl p-5 hover:border-orange-500/50 hover:shadow-xl dark:hover:bg-[#141414] transition-all cursor-pointer">
           <div className="flex items-start justify-between mb-4">
-            <div className="w-12 h-12 rounded-xl bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-2xl border border-slate-300 dark:border-slate-700 grayscale">
+            <div className="w-12 h-12 rounded-xl bg-orange-50 dark:bg-orange-500/10 flex items-center justify-center text-2xl border border-orange-100 dark:border-orange-500/20">
               🚚
             </div>
-            <span className="text-xs font-medium text-slate-500 bg-slate-200 dark:bg-[#1a1a1a] px-2 py-1 rounded-md">Coming Next</span>
+            <span className="text-xs font-medium text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/20 px-2 py-1 rounded-md">
+              Active
+            </span>
           </div>
-          <h3 className="text-lg font-bold mb-1 text-slate-500 dark:text-slate-400">Supplier Risk Evaluator</h3>
-          <p className="text-slate-500 dark:text-slate-600 text-sm mb-4 flex-1">Analyzes supplier contracts and historical delivery performance to flag potential delays or risks.</p>
-        </div>
+          <h3 className="text-lg font-bold mb-1 text-slate-900 dark:text-slate-200 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">Supplier Risk Evaluator</h3>
+          <p className="text-slate-600 dark:text-slate-500 text-sm mb-4 flex-1">Analyzes supplier contracts and historical delivery performance to flag hidden liabilities and operational risks.</p>
+          <div className="flex items-center gap-2 pt-4 border-t border-slate-100 dark:border-white/5">
+            <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 uppercase bg-slate-100 dark:bg-white/5 px-2 py-1 rounded">Legal AI</span>
+            <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 uppercase bg-slate-100 dark:bg-white/5 px-2 py-1 rounded">Risk Audit</span>
+          </div>
+        </Link>
 
       </div>
     </div>
