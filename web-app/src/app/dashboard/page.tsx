@@ -56,7 +56,6 @@ export default function Home() {
       {/* PURANA SECTION: Industry Agents Grid */}
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Industry Agents</h2>
-        <span className="text-sm text-blue-600 dark:text-blue-400 cursor-pointer hover:underline">View all</span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
