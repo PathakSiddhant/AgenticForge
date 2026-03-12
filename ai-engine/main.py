@@ -37,6 +37,9 @@ from agents import ticket_router
 from agents import auto_responder
 from agents import refund_automator
 
+# Agents (Logistics & Supply Chain)
+from agents import inventory_forecaster
+
 app = FastAPI(title="AgenticForge API Engine")
 
 app.add_middleware(
@@ -77,6 +80,9 @@ app.include_router(churn_predictor.router)
 app.include_router(ticket_router.router)
 app.include_router(auto_responder.router)
 app.include_router(refund_automator.router)
+
+# Routing Logistics
+app.include_router(inventory_forecaster.router)
 
 @app.get("/")
 def health_check():
