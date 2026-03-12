@@ -39,6 +39,7 @@ from agents import refund_automator
 
 # Agents (Logistics & Supply Chain)
 from agents import inventory_forecaster
+from agents import supplier_risk
 
 app = FastAPI(title="AgenticForge API Engine")
 
@@ -83,6 +84,7 @@ app.include_router(refund_automator.router)
 
 # Routing Logistics
 app.include_router(inventory_forecaster.router)
+app.include_router(supplier_risk.router)
 
 @app.get("/")
 def health_check():
