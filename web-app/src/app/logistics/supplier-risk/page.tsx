@@ -147,7 +147,7 @@ export default function SupplierRiskDashboard() {
         </div>
 
         {/* Right Column: AI Audit Dashboard */}
-        <div className="lg:col-span-7 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-white/5 rounded-2xl p-6 shadow-inner flex flex-col relative overflow-hidden min-h-[500px]">
+        <div className="lg:col-span-7 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-white/5 rounded-2xl p-6 shadow-inner flex flex-col relative overflow-hidden min-h-125">
           {data ? (
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500 z-10 relative">
               
