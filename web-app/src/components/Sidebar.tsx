@@ -24,6 +24,7 @@ export default function Sidebar() {
     { href: "/support", icon: "🎧", label: "Customer Support" },
     { href: "/logistics", icon: "📦", label: "Logistics & Supply Chain" },
     { href: "/media", icon: "🎬", label: "Media & Content" },
+    { href: "/travel", icon: "✈️", label: "Travel & Events" },
   ];
 
   return (
