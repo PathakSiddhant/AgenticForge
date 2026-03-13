@@ -49,6 +49,7 @@ from agents import content_repurposer
 
 # Agents (Travel & Event Management)
 from agents import itinerary_planner
+from agents import vendor_negotiator
 
 app = FastAPI(title="AgenticForge API Engine")
 
@@ -103,6 +104,8 @@ app.include_router(content_repurposer.router)
 
 # Routing Travel
 app.include_router(itinerary_planner.router)
+app.include_router(vendor_negotiator.router)
+
 
 @app.get("/")
 def health_check():
