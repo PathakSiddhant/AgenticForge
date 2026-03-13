@@ -44,7 +44,7 @@ export const ALL_AGENTS = [
 
   // ✈️ Travel & Event Management
   { name: "Hyper-Personalized Itinerary", category: "Travel & Event Management", href: "/travel/itinerary-planner" },
-  
+  { name: "Vendor Negotiator", category: "Travel & Event Management", href: "/travel/vendor-negotiator" },
 
 
 ];
