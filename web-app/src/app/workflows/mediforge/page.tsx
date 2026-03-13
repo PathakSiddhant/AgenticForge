@@ -1,246 +1,351 @@
 // Path: web-app/src/app/workflows/mediforge/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
+interface Appointment {
+  id: number; patient: string; phone: string; doctor_id: number; doctor: string; time: string; date: string; status: string; notes: string;
+}
+
+interface Doctor {
+  id: number; name: string; specialty: string;
+}
 
 export default function MediForgeDashboard() {
-  const [isSimulatorOpen, setIsSimulatorOpen] = useState(false);
-  const [callState, setCallState] = useState<"idle" | "connecting" | "listening" | "processing" | "success">("idle");
-  const [statusText, setStatusText] = useState("Ready to call");
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // States
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [filterDoctor, setFilterDoctor] = useState("All");
+  const [currentTime, setCurrentTime] = useState(new Date());
 
-  // Dummy Data
-  const appointments = [
-    { id: 1, patient: "Rahul Sharma", phone: "+91 98765 43210", doctor: "Dr. A. Gupta (Cardio)", time: "10:00 AM", duration: 60, status: "Confirmed", type: "AI Booked" },
-    { id: 2, patient: "Priya Singh", phone: "+91 91234 56789", doctor: "Dr. S. Verma (Derma)", time: "11:30 AM", duration: 30, status: "In-Clinic", type: "Walk-in" },
-    { id: 4, patient: "Sneha Desai", phone: "+91 98888 11111", doctor: "Dr. K. Iyer (Neuro)", time: "02:00 PM", duration: 45, status: "Confirmed", type: "AI Booked" },
-    { id: 5, patient: "Vikram Singh", phone: "+91 97777 22222", doctor: "Dr. S. Verma (Derma)", time: "04:15 PM", duration: 30, status: "Pending", type: "AI Booked" },
-  ];
+  // Real-time clock to grey out past slots dynamically
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 60000); // Check every minute
+    return () => clearInterval(timer);
+  }, []);
 
-  // The critical "Needs Human" tasks that should NEVER scroll away
-  const pendingActions = [
-    { id: 3, patient: "Amit Patel", phone: "+91 99887 76655", issue: "AI couldn't understand complex symptoms", status: "Needs Human", type: "Redirected" },
-  ];
+  // Modal & Form States
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [formData, setFormData] = useState({
+    patient_name: "", patient_phone: "", doctor_id: "", date: "", time: "09:00 AM", status: "Scheduled", notes: "Walk-in consultation"
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const startCall = () => {
-    setCallState("connecting");
-    setStatusText("Connecting to AI Engine...");
-    setTimeout(() => { setCallState("listening"); setStatusText("Listening to patient..."); }, 1500);
-    setTimeout(() => { setCallState("processing"); setStatusText("Checking calendar for Dr. Gupta..."); }, 4000);
-    setTimeout(() => { setCallState("success"); setStatusText("Slot Confirmed: Tomorrow, 10:00 AM"); }, 6500);
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      const [aptRes, docRes] = await Promise.all([
+        fetch("http://127.0.0.1:8000/api/mediforge/appointments"),
+        fetch("http://127.0.0.1:8000/api/mediforge/doctors")
+      ]);
+      if (aptRes.ok) setAppointments(await aptRes.json());
+      if (docRes.ok) {
+        const docData = await docRes.json();
+        setDoctors(docData);
+      }
+    } catch (error) {
+      console.error("Failed to fetch data:", error); // 🌟 FIXED unused var
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const endCall = () => {
-    setCallState("idle");
-    setStatusText("Ready to call");
+  useEffect(() => { fetchData(); }, []);
+
+  // Time Validation Math (Checks if a slot is in the past)
+  const isPastSlot = (dateStr: string, timeStr: string) => {
+    const [year, month, day] = dateStr.split('-');
+    const [time, modifier] = timeStr.split(' ');
+    
+    // 🌟 FIXED prefer-const warning
+    const timeParts = time.split(':');
+    let hours = parseInt(timeParts[0], 10);
+    const minutes = parseInt(timeParts[1], 10); 
+
+    if (hours === 12) hours = 0;
+    if (modifier === 'PM') hours += 12;
+    
+    const slotDateTime = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), hours, minutes);
+    return slotDateTime < currentTime;
   };
 
-  // NAYA LAYOUT: h-screen aur flex-col se page scroll block ho jayega
-  return (
-    <div className="h-screen w-full bg-slate-50 dark:bg-[#050505] flex flex-col font-sans overflow-hidden relative">
+  const getFormDateString = (d: Date) => {
+    return `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2,'0')}-${d.getDate().toString().padStart(2,'0')}`;
+  };
+
+  const displayedAppointments = appointments.filter(apt => {
+    const matchDate = apt.date === getFormDateString(selectedDate);
+    const matchDoctor = filterDoctor === "All" || apt.doctor === filterDoctor;
+    return matchDate && matchDoctor;
+  });
+
+  // Open form for NEW booking
+  const openNewBooking = (timeString: string) => {
+    if (doctors.length === 0) return;
+    setEditingId(null);
+    setFormData({
+      patient_name: "", patient_phone: "", doctor_id: doctors[0].id.toString(), date: getFormDateString(selectedDate), time: timeString, status: "Scheduled", notes: ""
+    });
+    setIsModalOpen(true);
+  };
+
+  // Open form to EDIT booking
+  const openEditBooking = (apt: Appointment) => {
+    setEditingId(apt.id);
+    setFormData({
+      patient_name: apt.patient, patient_phone: apt.phone, doctor_id: apt.doctor_id.toString(), date: apt.date, time: apt.time, status: apt.status, notes: apt.notes
+    });
+    setIsModalOpen(true);
+  };
+
+  // HANDLE SAVE (POST OR PUT)
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    
+    // Frontend Pre-Validation for 2 Patient Limit
+    const slotBookings = appointments.filter(a => a.doctor_id.toString() === formData.doctor_id && a.date === formData.date && a.time === formData.time && a.status !== 'Cancelled' && a.id !== editingId);
+    if (slotBookings.length >= 2) {
+      alert("❌ CAPACITY LIMIT: This doctor already has 2 patients booked for this 30-min slot. Please choose another time.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    try {
+      const url = editingId 
+        ? `http://127.0.0.1:8000/api/mediforge/appointments/${editingId}` 
+        : "http://127.0.0.1:8000/api/mediforge/appointments/manual";
       
-      {/* 🌟 1. LOCKED HEADER (Kabhi scroll nahi hoga) */}
-      <header className="shrink-0 bg-white dark:bg-[#0a0a0a] border-b border-slate-200 dark:border-white/5 px-8 py-5 flex items-center justify-between z-10">
-        <div>
-          <div className="flex items-center gap-3 mb-1">
-            <span className="text-2xl drop-shadow-sm">🏥</span>
-            <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">MediForge Auto-Receptionist</h1>
-          </div>
-          <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">Hybrid AI-Human Hospital Management</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <button className="bg-slate-900 dark:bg-white text-white dark:text-black font-bold text-sm px-5 py-2.5 rounded-xl hover:scale-105 transition-all shadow-md">
-            + Manual Walk-in
-          </button>
-        </div>
-      </header>
+      const res = await fetch(url, {
+        method: editingId ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...formData, doctor_id: parseInt(formData.doctor_id) })
+      });
+      const result = await res.json();
+      
+      if (result.status === "success") {
+        setIsModalOpen(false);
+        fetchData(); 
+      } else {
+        alert(result.message);
+      }
+    } catch (error) {
+      console.error(error); // 🌟 FIXED unused var
+      alert("Error connecting to server.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
-      {/* 🌟 2. LOCKED STATS ROW (Kabhi scroll nahi hoga) */}
-      <div className="shrink-0 bg-white dark:bg-[#0a0a0a] px-8 pb-6 pt-4 border-b border-slate-200 dark:border-white/5 z-10">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-5 max-w-screen-2xl mx-auto">
-          <div className="bg-slate-50 dark:bg-[#111] p-5 rounded-2xl border border-slate-200 dark:border-white/5">
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Total Bookings</p>
-            <p className="text-3xl font-black text-slate-900 dark:text-white">42</p>
-          </div>
-          <div className="bg-indigo-50 dark:bg-indigo-500/10 p-5 rounded-2xl border border-indigo-100 dark:border-indigo-500/20 relative overflow-hidden">
-            <div className="absolute -right-4 -top-4 text-6xl opacity-20">🤖</div>
-            <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-1">Handled by AI</p>
-            <p className="text-3xl font-black text-indigo-700 dark:text-indigo-300">38</p>
-          </div>
-          <div className="bg-rose-50 dark:bg-rose-500/10 p-5 rounded-2xl border border-rose-100 dark:border-rose-500/20 relative overflow-hidden">
-            <div className="absolute w-2 h-2 bg-rose-500 rounded-full top-5 right-5 animate-ping"></div>
-            <p className="text-xs font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider mb-1">Needs Human</p>
-            <p className="text-3xl font-black text-rose-700 dark:text-rose-300">04</p>
-          </div>
-          <div className="bg-slate-50 dark:bg-[#111] p-5 rounded-2xl border border-slate-200 dark:border-white/5">
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Available Doctors</p>
-            <p className="text-3xl font-black text-emerald-600 dark:text-emerald-500">12</p>
-          </div>
-        </div>
-      </div>
+  // HANDLE DELETE
+  const handleDelete = async () => {
+    if (!editingId || !confirm("Are you sure you want to completely remove this appointment?")) return;
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/mediforge/appointments/${editingId}`, { method: "DELETE" });
+      if ((await res.json()).status === "success") {
+        setIsModalOpen(false);
+        fetchData();
+      }
+    } catch (error) {
+      console.error(error); // 🌟 FIXED unused var
+      alert("Failed to delete.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
-      {/* 🌟 3. THE WORKSPACE (Ye hissa bachi hui height lega) */}
-      <main className="flex-1 min-h-0 flex gap-6 p-6 max-w-screen-2xl w-full mx-auto overflow-hidden">
+  // RENDER ROW
+  const renderCalendarRow = (hourString: string) => {
+    const isPast = isPastSlot(getFormDateString(selectedDate), hourString);
+    const hourApts = displayedAppointments.filter(apt => apt.time === hourString);
+
+    return (
+      // 🌟 FIXED min-h-[5.5rem] to min-h-22
+      <div key={hourString} className={`flex min-h-22 border-b border-slate-100 dark:border-[#1a1a1a] group relative ${isPast ? 'bg-slate-100/50 dark:bg-black/50 opacity-60' : ''}`}>
         
-        {/* LEFT COLUMN: Agenda & Pending Tasks */}
-        <div className="flex-[3] flex flex-col bg-white dark:bg-[#0a0a0a] border border-slate-200 dark:border-white/5 rounded-2xl shadow-sm min-h-0 overflow-hidden">
-          
-          <div className="shrink-0 px-6 py-4 border-b border-slate-200 dark:border-white/5 bg-slate-50/50 dark:bg-[#111]">
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">📋 Front-Desk Agenda</h2>
-          </div>
-
-          {/* 🔥 THE PINNED ALERTS (Never Scrolls!) */}
-          {pendingActions.map(action => (
-            <div key={action.id} className="shrink-0 bg-rose-50 dark:bg-rose-900/10 border-b border-rose-100 dark:border-rose-900/30 p-4 flex items-center justify-between">
-              <div className="flex gap-4 items-center">
-                <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-500/20 flex items-center justify-center text-xl">⚠️</div>
-                <div>
-                  <h4 className="font-bold text-rose-900 dark:text-rose-300 flex items-center gap-2">
-                    {action.patient} <span className="text-xs text-rose-500 bg-white/50 px-2 rounded-full">{action.phone}</span>
-                  </h4>
-                  <p className="text-sm font-medium text-rose-700 dark:text-rose-400 mt-0.5">{action.issue}</p>
-                </div>
+        <div className="w-24 shrink-0 text-right pr-4 pt-4 border-r border-slate-100 dark:border-[#1a1a1a]">
+          <span className={`text-[11px] font-bold px-2 py-1 rounded ${isPast ? 'text-slate-400 bg-transparent' : 'text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-[#0a0a0a]'}`}>
+            {hourString} {isPast && "(Past)"}
+          </span>
+        </div>
+        
+        <div className="flex-1 relative flex flex-wrap gap-3 p-3 z-10">
+          {hourApts.map(apt => (
+            <div 
+              key={apt.id} 
+              onClick={() => openEditBooking(apt)}
+              className={`w-56 border p-3 rounded-lg shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-center ${apt.status === 'Cancelled' ? 'bg-red-50/50 dark:bg-red-900/10 border-red-200 dark:border-red-900/30' : 'bg-white dark:bg-[#111] border-slate-200 dark:border-[#333] border-l-4 border-l-indigo-500'}`}
+            >
+              <div className="flex justify-between items-start mb-1">
+                <p className={`text-xs font-bold truncate ${apt.status === 'Cancelled' ? 'text-red-700 dark:text-red-400 line-through' : 'text-slate-900 dark:text-white'}`}>{apt.patient}</p>
+                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${apt.status === 'Completed' ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400' : apt.status === 'Checked-In' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' : apt.status === 'Cancelled' ? 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400' : 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400'}`}>
+                  {apt.status}
+                </span>
               </div>
-              <button className="bg-rose-600 hover:bg-rose-500 text-white text-sm font-bold px-5 py-2.5 rounded-xl shadow-sm transition-transform hover:scale-105">
-                Takeover Call
-              </button>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{apt.doctor}</p>
             </div>
           ))}
 
-          {/* Normal Table (Sirf ye scroll hoga) */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar">
-            <table className="w-full text-left border-collapse">
-              <thead className="bg-slate-50/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md sticky top-0 z-10 shadow-xs">
-                <tr className="text-[10px] uppercase tracking-widest text-slate-500 font-bold border-b border-slate-200 dark:border-white/5">
-                  <th className="p-4 pl-6">Time</th>
-                  <th className="p-4">Patient Info</th>
-                  <th className="p-4">Assigned To</th>
-                  <th className="p-4 text-center">Source</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-white/5 text-sm font-medium text-slate-700 dark:text-slate-300">
-                {appointments.map((apt) => (
-                  <tr key={apt.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
-                    <td className="p-4 pl-6 whitespace-nowrap font-bold text-slate-900 dark:text-white">{apt.time}</td>
-                    <td className="p-4">
-                      <p className="font-bold text-slate-900 dark:text-white">{apt.patient}</p>
-                      <p className="text-xs text-slate-500">{apt.phone}</p>
-                    </td>
-                    <td className="p-4">{apt.doctor}</td>
-                    <td className="p-4 text-center">
-                      {apt.type === "AI Booked" ? (
-                        <span className="inline-block text-indigo-600 bg-indigo-50 px-2 py-1 rounded text-[10px] font-bold border border-indigo-100">🤖 AI Booked</span>
-                      ) : (
-                        <span className="inline-block text-slate-500 bg-slate-100 px-2 py-1 rounded text-[10px] font-bold border border-slate-200">👨‍💻 Walk-in</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          {/* 🌟 FIXED min-w-[150px] to min-w-37.5 */}
+          {!isPast && (
+            <div className="flex-1 min-w-37.5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-start pl-2">
+              <button onClick={() => openNewBooking(hourString)} className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 px-4 py-2 rounded-lg shadow-sm hover:bg-indigo-100 transition-colors">
+                + Book Slot
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="h-screen w-full bg-slate-50 dark:bg-black flex flex-col font-sans overflow-hidden relative selection:bg-indigo-500/30">
+      
+      {/* HEADER */}
+      <header className="shrink-0 bg-white dark:bg-[#050505] border-b border-slate-200 dark:border-white/10 px-8 py-4 flex items-center justify-between z-10">
+        <div>
+          <div className="flex items-center gap-3 mb-1">
+            <span className="text-2xl drop-shadow-sm">🏥</span>
+            <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">MediForge HQ</h1>
+          </div>
+          <p className="text-slate-500 dark:text-slate-400 text-sm font-medium flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span> Database Sync Online
+          </p>
+        </div>
+        
+        <div className="flex items-center gap-5">
+          <div className="flex items-center gap-2 bg-slate-100 dark:bg-[#111] px-3 py-1.5 rounded-xl border border-slate-200 dark:border-white/10">
+            <span className="text-xs font-bold text-slate-500">FILTER:</span>
+            <select value={filterDoctor} onChange={(e) => setFilterDoctor(e.target.value)} className="bg-transparent text-sm font-bold text-slate-900 dark:text-white outline-none cursor-pointer">
+              <option value="All">All Doctors</option>
+              {doctors.map(doc => <option key={doc.id} value={doc.name}>{doc.name}</option>)}
+            </select>
+          </div>
+          <button onClick={fetchData} className="text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors p-2 text-xl" title="Refresh DB">🔄</button>
+        </div>
+      </header>
+
+      {/* WORKSPACE */}
+      <main className="flex-1 min-h-0 flex gap-6 p-6 max-w-screen-2xl w-full mx-auto overflow-hidden">
+        
+        {/* 🌟 FIXED flex-[2] to flex-2 and fixed the flex/hidden conflict */}
+        <div className="flex-2 hidden md:flex flex-col bg-white dark:bg-[#0A0A0A] border border-slate-200 dark:border-white/10 rounded-2xl shadow-sm min-h-0 overflow-hidden">
+          <div className="shrink-0 px-6 py-4 border-b border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-[#050505] flex justify-between items-center">
+            <h2 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">📋 Agenda Overview</h2>
+          </div>
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
+            {isLoading ? <p className="p-4 text-slate-500 text-sm">Loading...</p> : displayedAppointments.length === 0 ? (
+              <p className="text-center text-slate-400 mt-10">No appointments</p>
+            ) : displayedAppointments.map((apt) => (
+              <div key={apt.id} onClick={() => openEditBooking(apt)} className={`p-4 mb-3 rounded-xl border flex justify-between items-center shadow-sm cursor-pointer hover:border-indigo-500 transition-colors ${apt.status === 'Cancelled' ? 'bg-slate-50 dark:bg-black border-dashed opacity-50' : 'bg-white dark:bg-[#111] border-slate-200 dark:border-white/5'}`}>
+                <div>
+                  <h4 className={`font-bold text-sm ${apt.status === 'Cancelled' ? 'text-slate-400 line-through' : 'text-slate-900 dark:text-white'}`}>{apt.patient}</h4>
+                  <p className="text-xs text-slate-500 mt-1">{apt.doctor}</p>
+                </div>
+                <div className="text-right">
+                  <p className="font-bold text-indigo-600 dark:text-indigo-400 text-sm">{apt.time}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* RIGHT COLUMN: Google Calendar Style Visual View */}
-        <div className="flex-[2] flex flex-col bg-white dark:bg-[#0a0a0a] border border-slate-200 dark:border-white/5 rounded-2xl shadow-sm min-h-0 overflow-hidden">
-          
-          <div className="shrink-0 px-6 py-4 border-b border-slate-200 dark:border-white/5 bg-slate-50/50 dark:bg-[#111] flex justify-between items-center">
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">📅 Visual Schedule</h2>
-            <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg">Today</span>
+        {/* 🌟 FIXED flex-[4] to flex-4 */}
+        <div className="flex-4 flex flex-col bg-white dark:bg-[#0A0A0A] border border-slate-200 dark:border-white/10 rounded-2xl shadow-sm min-h-0 overflow-hidden relative">
+          <div className="shrink-0 px-6 py-4 border-b border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-[#050505] flex justify-between items-center">
+            <h2 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">📅 Master Schedule</h2>
+            <div className="flex items-center gap-2">
+              <input type="date" value={getFormDateString(selectedDate)} onChange={(e) => { if(e.target.value) setSelectedDate(new Date(e.target.value)); }} className="bg-white dark:bg-[#111] border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white text-sm font-bold px-4 py-2 rounded-lg cursor-pointer outline-none focus:border-indigo-500" />
+              <button onClick={() => setSelectedDate(new Date())} className="text-xs font-bold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 px-3 py-2.5 rounded-lg transition-colors">
+                Jump to Today
+              </button>
+            </div>
           </div>
-
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
-            <div className="relative border-l-2 border-slate-100 dark:border-white/5 ml-16 space-y-8 pb-10 mt-4">
-              
-              {/* Timeline Hours & Appointment Blocks */}
-              <div className="relative">
-                <span className="absolute -left-16 top-0 text-xs font-bold text-slate-400 w-12 text-right">09:00 AM</span>
-                <div className="h-px bg-slate-100 dark:bg-white/5 w-full absolute top-2"></div>
-              </div>
-
-              <div className="relative">
-                <span className="absolute -left-16 top-0 text-xs font-bold text-slate-400 w-12 text-right">10:00 AM</span>
-                <div className="h-px bg-slate-100 dark:bg-white/5 w-full absolute top-2"></div>
-                {/* Visual Block for 10 AM */}
-                <div className="absolute top-2 left-4 right-4 bg-indigo-50 dark:bg-indigo-500/10 border-l-4 border-indigo-500 p-3 rounded-r-lg shadow-sm">
-                  <p className="text-xs font-bold text-indigo-700 dark:text-indigo-400">Cardiology - Dr. A. Gupta</p>
-                  <p className="text-[10px] text-indigo-500 font-semibold mt-0.5">Rahul Sharma (60 mins) • AI Booked</p>
-                </div>
-              </div>
-
-              <div className="relative mt-20"> {/* Spaced to show 11 AM */}
-                <span className="absolute -left-16 top-0 text-xs font-bold text-slate-400 w-12 text-right">11:00 AM</span>
-                <div className="h-px bg-slate-100 dark:bg-white/5 w-full absolute top-2"></div>
-                
-                <div className="absolute top-10 left-4 right-4 bg-emerald-50 border-l-4 border-emerald-500 p-3 rounded-r-lg shadow-sm">
-                  <p className="text-xs font-bold text-emerald-700">Dermatology - Dr. S. Verma</p>
-                  <p className="text-[10px] text-emerald-600 font-semibold mt-0.5">Priya Singh (30 mins) • Walk-in</p>
-                </div>
-              </div>
-
-              <div className="relative mt-20">
-                <span className="absolute -left-16 top-0 text-xs font-bold text-slate-400 w-12 text-right">12:00 PM</span>
-                <div className="h-px bg-slate-100 dark:bg-white/5 w-full absolute top-2"></div>
-              </div>
-              
-              <div className="relative mt-20">
-                <span className="absolute -left-16 top-0 text-xs font-bold text-slate-400 w-12 text-right">01:00 PM</span>
-                <div className="h-px bg-slate-100 dark:bg-white/5 w-full absolute top-2"></div>
-              </div>
-
+          
+          <div className="flex-1 overflow-y-auto custom-scrollbar bg-slate-50/30 dark:bg-[#020202]">
+            <div className="pb-10">
+              {["09:00 AM", "09:30 AM", "10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM", "12:00 PM", "12:30 PM", "01:00 PM", "01:30 PM", "02:00 PM", "02:30 PM", "03:00 PM", "03:30 PM", "04:00 PM", "04:30 PM", "05:00 PM"].map((hour) => (
+                renderCalendarRow(hour)
+              ))}
             </div>
           </div>
         </div>
 
       </main>
 
-      {/* 🌟 4. THE SLEEK AI CALL WIDGET (Fixed pos bottom right) */}
-      <div className="absolute bottom-8 right-8 z-50 flex flex-col items-end">
-        <div className={`mb-4 w-80 bg-white dark:bg-[#111] border border-slate-200 dark:border-white/10 rounded-3xl shadow-2xl overflow-hidden transition-all duration-300 origin-bottom-right ${isSimulatorOpen ? 'scale-100 opacity-100 translate-y-0' : 'scale-90 opacity-0 translate-y-10 pointer-events-none'}`}>
-          <div className="bg-slate-50 dark:bg-[#1a1a1a] p-4 flex justify-between items-center border-b border-slate-200 dark:border-white/5">
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <div className="w-10 h-10 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-lg shadow-sm">✨</div>
-                <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
-              </div>
-              <div>
-                <h3 className="font-bold text-slate-900 dark:text-white text-sm">AI Receptionist</h3>
-                <p className="text-[11px] text-slate-500 font-medium">MediForge Engine</p>
-              </div>
+      {/* THE EDIT/NEW MODAL FORM */}
+      {/* 🌟 FIXED z-[9999] to z-50 (Standard proper layering for modals) */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#0A0A0A] w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden">
+            <div className="px-6 py-5 border-b border-slate-200 dark:border-white/10 flex justify-between items-center bg-slate-50 dark:bg-[#050505]">
+              <h3 className="font-bold text-lg text-slate-900 dark:text-white">{editingId ? "Edit Booking" : "New Booking"}</h3>
+              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white text-xl font-bold">✕</button>
             </div>
-            <button onClick={() => setIsSimulatorOpen(false)} className="text-slate-400 w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200 transition-colors">✖</button>
-          </div>
-          <div className="p-6 flex flex-col items-center justify-center min-h-[240px] relative">
-            {(callState === "listening" || callState === "processing") && <div className="absolute inset-0 bg-indigo-500/5 animate-pulse"></div>}
-            <div className="z-10 flex flex-col items-center text-center w-full">
-              <div className="mb-6 h-20 flex items-center justify-center">
-                {callState === "idle" && <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-2xl border">📞</div>}
-                {callState === "connecting" && <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>}
-                {(callState === "listening" || callState === "processing") && (
-                  <div className="relative flex items-center justify-center">
-                    <div className="absolute w-20 h-20 bg-indigo-500/20 rounded-full animate-ping"></div>
-                    <div className="relative w-12 h-12 bg-linear-to-r from-indigo-600 to-purple-600 rounded-full shadow-lg"></div>
+            
+            <form onSubmit={handleSave} className="p-6 space-y-5">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Patient Name</label>
+                  <input required type="text" value={formData.patient_name} onChange={(e) => setFormData({...formData, patient_name: e.target.value})} className="w-full bg-slate-50 dark:bg-[#111] border border-slate-200 dark:border-[#333] text-slate-900 dark:text-white rounded-lg px-4 py-2.5 text-sm outline-none focus:border-indigo-500" />
+                </div>
+                
+                <div className="col-span-2">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Assign Doctor</label>
+                  <select value={formData.doctor_id} onChange={(e) => setFormData({...formData, doctor_id: e.target.value})} className="w-full bg-slate-50 dark:bg-[#111] border border-slate-200 dark:border-[#333] text-slate-900 dark:text-white rounded-lg px-4 py-2.5 text-sm outline-none cursor-pointer">
+                    {doctors.map(doc => <option key={doc.id} value={doc.id}>{doc.name} ({doc.specialty})</option>)}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Date</label>
+                  <input required type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="w-full bg-slate-50 dark:bg-[#111] border border-slate-200 dark:border-[#333] text-slate-900 dark:text-white rounded-lg px-4 py-2.5 text-sm outline-none" />
+                </div>
+                
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Time</label>
+                  <select value={formData.time} onChange={(e) => setFormData({...formData, time: e.target.value})} className="w-full bg-slate-50 dark:bg-[#111] border border-slate-200 dark:border-[#333] text-slate-900 dark:text-white rounded-lg px-4 py-2.5 text-sm outline-none cursor-pointer">
+                    <option>09:00 AM</option><option>09:30 AM</option><option>10:00 AM</option><option>10:30 AM</option>
+                    <option>11:00 AM</option><option>11:30 AM</option><option>12:00 PM</option><option>12:30 PM</option>
+                    <option>01:00 PM</option><option>01:30 PM</option><option>02:00 PM</option><option>02:30 PM</option>
+                    <option>03:00 PM</option><option>03:30 PM</option><option>04:00 PM</option><option>04:30 PM</option>
+                  </select>
+                </div>
+
+                {editingId && (
+                  <div className="col-span-2">
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Patient Status</label>
+                    <select value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value})} className="w-full bg-slate-50 dark:bg-[#111] border border-slate-200 dark:border-[#333] text-slate-900 dark:text-white rounded-lg px-4 py-2.5 text-sm outline-none cursor-pointer">
+                      <option value="Scheduled">Scheduled (Upcoming)</option>
+                      <option value="Checked-In">Checked-In (Waiting Area)</option>
+                      <option value="Completed">Completed (Done)</option>
+                      <option value="Cancelled">Cancelled (No Show)</option>
+                    </select>
                   </div>
                 )}
-                {callState === "success" && <div className="w-16 h-16 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-3xl">✓</div>}
               </div>
-              <h4 className="font-bold text-slate-900 text-lg mb-1">{callState === "idle" ? "Test AI Call" : callState === "success" ? "Done!" : "AI is Active"}</h4>
-              <p className={`text-sm font-medium ${callState === "success" ? "text-green-600" : "text-slate-500"} h-10`}>{statusText}</p>
-              <div className="mt-4 w-full">
-                {callState === "idle" ? (
-                  <button onClick={startCall} className="w-full bg-slate-900 text-white font-bold py-3 rounded-xl hover:scale-[1.02] transition-transform">Simulate Call</button>
-                ) : callState === "success" ? (
-                  <button onClick={endCall} className="w-full bg-slate-100 text-slate-700 font-bold py-3 rounded-xl hover:bg-slate-200">Close</button>
-                ) : (
-                  <button onClick={endCall} className="w-14 h-14 mx-auto bg-red-500 text-white rounded-full flex items-center justify-center text-xl hover:scale-110 transition-transform">🛑</button>
+
+              <div className="pt-4 mt-6 flex gap-3">
+                {editingId && (
+                  <button type="button" onClick={handleDelete} disabled={isSubmitting} className="w-1/3 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 font-bold py-3.5 rounded-xl hover:bg-red-100 transition-colors">
+                    Delete
+                  </button>
                 )}
+                <button type="submit" disabled={isSubmitting} className="flex-1 bg-indigo-600 dark:bg-white text-white dark:text-black font-bold py-3.5 rounded-xl shadow-lg hover:scale-[1.02] transition-transform disabled:opacity-50">
+                  {isSubmitting ? "Saving..." : editingId ? "Update Booking" : "Confirm Booking"}
+                </button>
               </div>
-            </div>
+            </form>
           </div>
         </div>
-        <button onClick={() => setIsSimulatorOpen(!isSimulatorOpen)} className={`w-16 h-16 rounded-full flex items-center justify-center text-2xl shadow-2xl transition-all hover:scale-105 border-4 border-white ${isSimulatorOpen ? 'bg-slate-800 text-white rotate-45' : 'bg-indigo-600 text-white animate-bounce'}`}>
-          {isSimulatorOpen ? '✖' : '🎙️'}
-        </button>
-      </div>
+      )}
+
     </div>
   );
 }
