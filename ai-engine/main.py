@@ -2,10 +2,17 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from dotenv import load_dotenv
+
+# Import Local Modules
+from db import get_db_connection
 
 load_dotenv()
 
+# ==========================================
+# 🤖 MICRO-AGENTS IMPORTS
+# ==========================================
 # Agents (Base)
 from agents import data_structurer
 from agents import memory_bot
@@ -52,16 +59,27 @@ from agents import itinerary_planner
 from agents import vendor_negotiator
 from agents import crisis_manager
 
+# Enterprise Workflow (MediForge)
+from agents.mediforge_receptionist import MediForgeReceptionist
+
+
+# ==========================================
+# 🚀 APP INITIALIZATION & CORS
+# ==========================================
 app = FastAPI(title="AgenticForge API Engine")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+
+# ==========================================
+# 🔗 MICRO-AGENTS ROUTING
+# ==========================================
 # Routing Base
 app.include_router(data_structurer.router)
 app.include_router(memory_bot.router)
@@ -111,3 +129,155 @@ app.include_router(crisis_manager.router)
 @app.get("/")
 def health_check():
     return {"status": "AI Engine is running perfectly!"}
+
+
+# ==========================================
+# 🌟 ENTERPRISE WORKFLOWS: MEDIFORGE ENDPOINTS
+# ==========================================
+
+# 1. Initialize Global Agent (Preserves Chat History)
+receptionist_agent = MediForgeReceptionist()
+
+# 2. Pydantic Models for Input Validation
+class ChatRequest(BaseModel):
+    message: str
+
+class ManualBooking(BaseModel):
+    patient_name: str
+    patient_phone: str
+    doctor_id: int
+    date: str  # Format: YYYY-MM-DD
+    time: str  # Format: HH:MM AM/PM
+    status: str = "Scheduled"  # 🌟 NAYA: Added Status for editing
+    notes: str
+
+# 3. Endpoint: AI Chat Simulator
+@app.post("/api/mediforge/chat")
+async def mediforge_chat(request: ChatRequest):
+    """Handles messages from the AI Agent widget"""
+    ai_reply = receptionist_agent.chat(request.message)
+    return {"reply": ai_reply}
+
+# 4. Endpoint: Fetch Live Appointments for Dashboard
+@app.get("/api/mediforge/appointments")
+def get_live_appointments():
+    """Fetches real appointments from Neon DB for the Dashboard Grid/Calendar"""
+    conn = get_db_connection()
+    if not conn: return []
+    
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT a.id, a.patient_name as patient, a.patient_phone as phone, 
+                   a.doctor_id, d.name as doctor, a.appointment_date, a.status, a.notes 
+            FROM appointments a 
+            JOIN doctors d ON a.doctor_id = d.id 
+            ORDER BY a.appointment_date ASC
+        """)
+        appointments = cur.fetchall()
+        
+        # Convert datetime to string for frontend visualization
+        for appt in appointments:
+            if appt['appointment_date']:
+                appt['time'] = appt['appointment_date'].strftime("%I:%M %p")
+                appt['date'] = appt['appointment_date'].strftime("%Y-%m-%d") # 🌟 NAYA: Formatted for perfect Date Math
+                
+        return appointments
+    except Exception as e:
+        print(f"Error fetching DB: {e}")
+        return []
+    finally:
+        conn.close()
+
+# 5. Endpoint: Manual Walk-in Booking (CREATE)
+@app.post("/api/mediforge/appointments/manual")
+def create_manual_appointment(booking: ManualBooking):
+    conn = get_db_connection()
+    if not conn: return {"status": "error", "message": "DB Connection Failed"}
+    
+    try:
+        cur = conn.cursor()
+        full_datetime = f"{booking.date} {booking.time}"
+        
+        # 🛑 STRICT LIMIT CHECK: Max 2 patients per doctor per 30-min slot
+        cur.execute("""
+            SELECT COUNT(*) as current_bookings FROM appointments 
+            WHERE doctor_id = %s AND appointment_date = %s::timestamp AND status != 'Cancelled'
+        """, (booking.doctor_id, full_datetime))
+        
+        if cur.fetchone()['current_bookings'] >= 2:
+            return {"status": "error", "message": "LIMIT REACHED: This doctor already has 2 patients in this slot. Please select another time."}
+
+        cur.execute("""
+            INSERT INTO appointments (patient_name, patient_phone, doctor_id, appointment_date, status, notes)
+            VALUES (%s, %s, %s, %s::timestamp, %s, %s) RETURNING id
+        """, (booking.patient_name, booking.patient_phone, booking.doctor_id, full_datetime, booking.status, booking.notes))
+        
+        conn.commit()
+        return {"status": "success"}
+    except Exception as e:
+        print(f"DB Error: {e}")
+        return {"status": "error", "message": str(e)}
+    finally:
+        conn.close()
+
+# 🌟 6. NAYA ENDPOINT: EDIT APPOINTMENT (UPDATE)
+@app.put("/api/mediforge/appointments/{apt_id}")
+def update_appointment(apt_id: int, booking: ManualBooking):
+    conn = get_db_connection()
+    if not conn: return {"status": "error", "message": "DB Connection Failed"}
+    try:
+        cur = conn.cursor()
+        full_datetime = f"{booking.date} {booking.time}"
+        
+        # 🛑 STRICT LIMIT CHECK FOR EDIT (Ignoring the current appointment being edited)
+        cur.execute("""
+            SELECT COUNT(*) as current_bookings FROM appointments 
+            WHERE doctor_id = %s AND appointment_date = %s::timestamp AND id != %s AND status != 'Cancelled'
+        """, (booking.doctor_id, full_datetime, apt_id))
+        
+        if cur.fetchone()['current_bookings'] >= 2:
+            return {"status": "error", "message": "LIMIT REACHED: Cannot move to this slot. Doctor already has 2 patients here."}
+
+        cur.execute("""
+            UPDATE appointments 
+            SET patient_name=%s, patient_phone=%s, doctor_id=%s, appointment_date=%s::timestamp, status=%s, notes=%s
+            WHERE id=%s
+        """, (booking.patient_name, booking.patient_phone, booking.doctor_id, full_datetime, booking.status, booking.notes, apt_id))
+        conn.commit()
+        return {"status": "success"}
+    except Exception as e:
+        print(f"DB Error: {e}")
+        return {"status": "error", "message": str(e)}
+    finally:
+        conn.close()
+
+# 🌟 7. NAYA ENDPOINT: DELETE APPOINTMENT (REMOVE)
+@app.delete("/api/mediforge/appointments/{apt_id}")
+def delete_appointment(apt_id: int):
+    conn = get_db_connection()
+    if not conn: return {"status": "error", "message": "DB Connection Failed"}
+    try:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM appointments WHERE id=%s", (apt_id,))
+        conn.commit()
+        return {"status": "success"}
+    except Exception as e:
+        print(f"DB Error: {e}")
+        return {"status": "error", "message": str(e)}
+    finally:
+        conn.close()
+
+# 8. Endpoint: Fetch all Doctors for the Dropdown
+@app.get("/api/mediforge/doctors")
+def get_doctors():
+    conn = get_db_connection()
+    if not conn: return []
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT id, name, specialty FROM doctors ORDER BY specialty, name")
+        return cur.fetchall()
+    except Exception as e:
+        return []
+    finally:
+        conn.close()
