@@ -129,14 +129,14 @@ export default function ItineraryPlanner() {
         {/* RIGHT COLUMN: Results Dashboard */}
         <div className="lg:col-span-2">
           {!result && !loading && (
-            <div className="h-full min-h-[400px] flex flex-col items-center justify-center border border-dashed border-slate-300 dark:border-white/10 rounded-2xl bg-slate-50 dark:bg-[#0a0a0a]">
+            <div className="h-full min-h-100 flex flex-col items-center justify-center border border-dashed border-slate-300 dark:border-white/10 rounded-2xl bg-slate-50 dark:bg-[#0a0a0a]">
               <span className="text-4xl mb-4 opacity-50">✈️</span>
               <p className="text-slate-500 dark:text-slate-400 font-medium">Enter details to generate an itinerary.</p>
             </div>
           )}
 
           {loading && (
-            <div className="h-full min-h-[400px] flex flex-col items-center justify-center border border-slate-200 dark:border-white/5 rounded-2xl bg-white dark:bg-[#111]">
+            <div className="h-full min-h-100 flex flex-col items-center justify-center border border-slate-200 dark:border-white/5 rounded-2xl bg-white dark:bg-[#111]">
               <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
               <p className="text-slate-600 dark:text-slate-400 font-medium animate-pulse">Calculating optimal routes & costs...</p>
             </div>
@@ -180,7 +180,7 @@ export default function ItineraryPlanner() {
                         <div key={aIdx} className="flex gap-4 relative">
                           {/* Timeline Line */}
                           {aIdx !== day.activities.length - 1 && (
-                            <div className="absolute left-[2.25rem] top-10 bottom-[-1.5rem] w-px bg-slate-200 dark:bg-white/10"></div>
+                            <div className="absolute left-9 top-10 -bottom-6 w-px bg-slate-200 dark:bg-white/10"></div>
                           )}
                           
                           <div className="w-16 shrink-0 text-right pt-1">

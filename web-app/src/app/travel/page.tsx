@@ -37,6 +37,25 @@ export default function TravelCategoryPage() {
           </div>
         </Link>
 
+        {/* Agent 2: Vendor Negotiator (Active) */}
+        <Link href="/travel/vendor-negotiator" className="group flex flex-col bg-white dark:bg-[#111] border border-slate-200 dark:border-white/5 rounded-2xl p-5 hover:border-indigo-500/50 hover:shadow-xl dark:hover:bg-[#141414] transition-all cursor-pointer">
+          <div className="flex items-start justify-between mb-4">
+            <div className="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-2xl border border-indigo-100 dark:border-indigo-500/20">
+              🤝
+            </div>
+            <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 px-2 py-1 rounded-md">
+              Active
+            </span>
+          </div>
+          <h3 className="text-lg font-bold mb-1 text-slate-900 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">Vendor Negotiator</h3>
+          <p className="text-slate-600 dark:text-slate-500 text-sm mb-4 flex-1">Drafts psychological negotiation emails to help lower quotes from event caterers and venues without losing respect.</p>
+          <div className="flex items-center gap-2 pt-4 border-t border-slate-100 dark:border-white/5">
+            <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 uppercase bg-slate-100 dark:bg-white/5 px-2 py-1 rounded">Psychology</span>
+            <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 uppercase bg-slate-100 dark:bg-white/5 px-2 py-1 rounded">Copywriting</span>
+          </div>
+        </Link>
+
+
       </div>
     </div>
   );
