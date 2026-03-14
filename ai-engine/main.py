@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from db import get_db_connection
 
 from fastapi import Form, Response
-from twilio.twiml.messaging_response import MessagingResponse
+
 
 load_dotenv()
 
@@ -64,6 +64,8 @@ from agents import crisis_manager
 
 # Enterprise Workflow (MediForge)
 from agents.mediforge_receptionist import MediForgeReceptionist
+from twilio.twiml.messaging_response import MessagingResponse
+from fastapi import FastAPI, Request, Form, Response
 
 
 # ==========================================
@@ -307,3 +309,74 @@ async def whatsapp_webhook(Body: str = Form(...), From: str = Form(...)):
         error_msg = MessagingResponse()
         error_msg.message("Sorry, our AI system is currently offline. Please try again later.")
         return Response(content=str(error_msg), media_type="application/xml")
+    
+
+# 🌟 10. THE FINAL BOSS: VAPI.AI VOICE WEBHOOK
+import json  # 🌟 NAYA: JSON import for parsing Vapi string
+
+@app.post("/api/vapi/webhook")
+async def vapi_webhook(request: Request):
+    """Handles Real-Time Voice AI Tool Calls from Vapi.ai"""
+    try:
+        payload = await request.json()
+        message = payload.get("message", {})
+
+        if message.get("type") == "tool-calls":
+            results = []
+            
+            from agents.mediforge_receptionist import check_availability, book_appointment, lookup_appointment, cancel_appointment
+
+            for tool_call in message.get("toolCalls", []):
+                function_name = tool_call.get("function", {}).get("name")
+                
+                # 🌟 THE FIX: Get the raw arguments string and parse it!
+                raw_arguments = tool_call.get("function", {}).get("arguments", "{}")
+                
+                if isinstance(raw_arguments, str):
+                    arguments = json.loads(raw_arguments)  # String to Dictionary
+                else:
+                    arguments = raw_arguments
+
+                call_id = tool_call.get("id")
+
+                print(f"\n📞 [VOICE AI ACTION] Calling {function_name} with: {arguments}")
+
+                result_str = ""
+                
+                if function_name == "check_availability":
+                    result_str = check_availability(arguments.get("specialty_category"), arguments.get("target_date"))
+                
+                elif function_name == "book_appointment":
+                    # Added a fallback for symptoms just in case Vapi misses it
+                    symptoms = arguments.get("symptoms", "Voice Consultation")
+                    result_str = book_appointment(
+                        arguments.get("patient_name"), 
+                        arguments.get("patient_phone"), 
+                        arguments.get("specialty_category"), 
+                        arguments.get("appointment_date"), 
+                        arguments.get("appointment_time"), 
+                        symptoms
+                    )
+                
+                elif function_name == "lookup_appointment":
+                    result_str = lookup_appointment(arguments.get("patient_phone"))
+                
+                elif function_name == "cancel_appointment":
+                    result_str = cancel_appointment(arguments.get("patient_phone"))
+                
+                else:
+                    result_str = "Error: Unknown tool."
+
+                # Vapi ko reply bhejna
+                results.append({
+                    "toolCallId": call_id,
+                    "result": result_str
+                })
+
+            return {"results": results}
+
+        return {"status": "ignored message type"}
+    
+    except Exception as e:
+        print(f"❌ Voice Webhook Error: {e}")
+        return {"error": str(e)}
