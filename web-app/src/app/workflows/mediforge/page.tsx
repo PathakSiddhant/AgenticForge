@@ -21,8 +21,10 @@ export default function MediForgeDashboard() {
   const [filterDoctor, setFilterDoctor] = useState("All");
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  // 🌟 NAYA: AI Chat Widget States
+  // AI Chat Widget States
   const [isSimulatorOpen, setIsSimulatorOpen] = useState(false);
+  // 🌟 NAYA: Tab State for Chat vs WhatsApp
+  const [activeTab, setActiveTab] = useState<"chat" | "whatsapp">("chat"); 
   const [messages, setMessages] = useState<{role: "ai" | "user", text: string}[]>([
     { role: "ai", text: "Hello! I am the MediForge AI Receptionist. I can check schedules and book appointments. How can I help?" }
   ]);
@@ -30,18 +32,17 @@ export default function MediForgeDashboard() {
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll chat to bottom
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isTyping]);
+    if (activeTab === "chat") {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, isTyping, activeTab]);
 
-  // Real-time clock to grey out past slots
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000); 
     return () => clearInterval(timer);
   }, []);
 
-  // Modal & Form States
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
@@ -73,14 +74,11 @@ export default function MediForgeDashboard() {
   const isPastSlot = (dateStr: string, timeStr: string) => {
     const [year, month, day] = dateStr.split('-');
     const [time, modifier] = timeStr.split(' ');
-    
     const timeParts = time.split(':');
     let hours = parseInt(timeParts[0], 10);
     const minutes = parseInt(timeParts[1], 10); 
-
     if (hours === 12) hours = 0;
     if (modifier === 'PM') hours += 12;
-    
     const slotDateTime = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), hours, minutes);
     return slotDateTime < currentTime;
   };
@@ -98,55 +96,35 @@ export default function MediForgeDashboard() {
   const openNewBooking = (timeString: string) => {
     if (doctors.length === 0) return;
     setEditingId(null);
-    setFormData({
-      patient_name: "", patient_phone: "", doctor_id: doctors[0].id.toString(), date: getFormDateString(selectedDate), time: timeString, status: "Scheduled", notes: ""
-    });
+    setFormData({ patient_name: "", patient_phone: "", doctor_id: doctors[0].id.toString(), date: getFormDateString(selectedDate), time: timeString, status: "Scheduled", notes: "" });
     setIsModalOpen(true);
   };
 
   const openEditBooking = (apt: Appointment) => {
     setEditingId(apt.id);
-    setFormData({
-      patient_name: apt.patient, patient_phone: apt.phone, doctor_id: apt.doctor_id.toString(), date: apt.date, time: apt.time, status: apt.status, notes: apt.notes
-    });
+    setFormData({ patient_name: apt.patient, patient_phone: apt.phone, doctor_id: apt.doctor_id.toString(), date: apt.date, time: apt.time, status: apt.status, notes: apt.notes });
     setIsModalOpen(true);
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
     const slotBookings = appointments.filter(a => a.doctor_id.toString() === formData.doctor_id && a.date === formData.date && a.time === formData.time && a.status !== 'Cancelled' && a.id !== editingId);
     if (slotBookings.length >= 2) {
       alert("❌ CAPACITY LIMIT: This doctor already has 2 patients booked for this 30-min slot. Please choose another time.");
       setIsSubmitting(false);
       return;
     }
-
     try {
-      const url = editingId 
-        ? `http://127.0.0.1:8000/api/mediforge/appointments/${editingId}` 
-        : "http://127.0.0.1:8000/api/mediforge/appointments/manual";
-      
+      const url = editingId ? `http://127.0.0.1:8000/api/mediforge/appointments/${editingId}` : "http://127.0.0.1:8000/api/mediforge/appointments/manual";
       const res = await fetch(url, {
         method: editingId ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...formData, doctor_id: parseInt(formData.doctor_id) })
       });
       const result = await res.json();
-      
-      if (result.status === "success") {
-        setIsModalOpen(false);
-        fetchData(); 
-      } else {
-        alert(result.message);
-      }
-    } catch (error) {
-      console.error(error); 
-      alert("Error connecting to server.");
-    } finally {
-      setIsSubmitting(false);
-    }
+      if (result.status === "success") { setIsModalOpen(false); fetchData(); } else { alert(result.message); }
+    } catch (error) { console.error(error); alert("Error connecting to server."); } finally { setIsSubmitting(false); }
   };
 
   const handleDelete = async () => {
@@ -154,54 +132,31 @@ export default function MediForgeDashboard() {
     setIsSubmitting(true);
     try {
       const res = await fetch(`http://127.0.0.1:8000/api/mediforge/appointments/${editingId}`, { method: "DELETE" });
-      if ((await res.json()).status === "success") {
-        setIsModalOpen(false);
-        fetchData();
-      }
-    } catch (error) {
-      console.error(error); 
-      alert("Failed to delete.");
-    } finally {
-      setIsSubmitting(false);
-    }
+      if ((await res.json()).status === "success") { setIsModalOpen(false); fetchData(); }
+    } catch (error) { console.error(error); alert("Failed to delete."); } finally { setIsSubmitting(false); }
   };
 
-  // 🌟 NAYA: AI CHAT SENDER LOGIC
   const handleSendMessage = async () => {
     if (!inputText.trim()) return;
-    
     const userMsg = inputText;
     setMessages(prev => [...prev, { role: "user", text: userMsg }]);
     setInputText("");
     setIsTyping(true);
-
     try {
       const res = await fetch("http://127.0.0.1:8000/api/mediforge/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMsg })
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: userMsg })
       });
-      
       const data = await res.json();
       setMessages(prev => [...prev, { role: "ai", text: data.reply }]);
-
-      // 🌟 MAGIC: Agar AI ne SUCCESS bol diya, toh Dashboard instantly reload hoga!
-      if (data.reply.includes("SUCCESS")) {
-        fetchData(); 
-      }
-
+      if (data.reply.includes("SUCCESS")) fetchData(); 
     } catch (error) {
-      console.error(error);
-      setMessages(prev => [...prev, { role: "ai", text: "❌ Connection Error: Is the Python backend running?" }]);
-    } finally {
-      setIsTyping(false);
-    }
+      console.error(error); setMessages(prev => [...prev, { role: "ai", text: "❌ Connection Error: Is the Python backend running?" }]);
+    } finally { setIsTyping(false); }
   };
 
   const renderCalendarRow = (hourString: string) => {
     const isPast = isPastSlot(getFormDateString(selectedDate), hourString);
     const hourApts = displayedAppointments.filter(apt => apt.time === hourString);
-
     return (
       <div key={hourString} className={`flex min-h-22 border-b border-slate-100 dark:border-[#1a1a1a] group relative ${isPast ? 'bg-slate-100/50 dark:bg-black/50 opacity-60' : ''}`}>
         <div className="w-24 shrink-0 text-right pr-4 pt-4 border-r border-slate-100 dark:border-[#1a1a1a]">
@@ -209,29 +164,19 @@ export default function MediForgeDashboard() {
             {hourString} {isPast && "(Past)"}
           </span>
         </div>
-        
         <div className="flex-1 relative flex flex-wrap gap-3 p-3 z-10">
           {hourApts.map(apt => (
-            <div 
-              key={apt.id} 
-              onClick={() => openEditBooking(apt)}
-              className={`w-56 border p-3 rounded-lg shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-center ${apt.status === 'Cancelled' ? 'bg-red-50/50 dark:bg-red-900/10 border-red-200 dark:border-red-900/30' : 'bg-white dark:bg-[#111] border-slate-200 dark:border-[#333] border-l-4 border-l-indigo-500'}`}
-            >
+            <div key={apt.id} onClick={() => openEditBooking(apt)} className={`w-56 border p-3 rounded-lg shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-center ${apt.status === 'Cancelled' ? 'bg-red-50/50 dark:bg-red-900/10 border-red-200 dark:border-red-900/30' : 'bg-white dark:bg-[#111] border-slate-200 dark:border-[#333] border-l-4 border-l-indigo-500'}`}>
               <div className="flex justify-between items-start mb-1">
                 <p className={`text-xs font-bold truncate ${apt.status === 'Cancelled' ? 'text-red-700 dark:text-red-400 line-through' : 'text-slate-900 dark:text-white'}`}>{apt.patient}</p>
-                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${apt.status === 'Completed' ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400' : apt.status === 'Checked-In' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' : apt.status === 'Cancelled' ? 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400' : 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400'}`}>
-                  {apt.status}
-                </span>
+                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${apt.status === 'Completed' ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400' : apt.status === 'Checked-In' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' : apt.status === 'Cancelled' ? 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400' : 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400'}`}>{apt.status}</span>
               </div>
               <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{apt.doctor}</p>
             </div>
           ))}
-
           {!isPast && (
             <div className="flex-1 min-w-37.5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-start pl-2">
-              <button onClick={() => openNewBooking(hourString)} className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 px-4 py-2 rounded-lg shadow-sm hover:bg-indigo-100 transition-colors">
-                + Book Slot
-              </button>
+              <button onClick={() => openNewBooking(hourString)} className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 px-4 py-2 rounded-lg shadow-sm hover:bg-indigo-100 transition-colors">+ Book Slot</button>
             </div>
           )}
         </div>
@@ -312,76 +257,122 @@ export default function MediForgeDashboard() {
 
       </main>
 
-      {/* 🌟 NAYA: THE LIVE AI CHAT WIDGET 🌟 */}
+      {/* THE LIVE AI CHAT WIDGET */}
       <div className="fixed bottom-8 right-8 z-50 flex flex-col items-end">
-        <div className={`mb-4 w-96 bg-white dark:bg-[#111] border border-slate-200 dark:border-white/10 rounded-3xl shadow-2xl overflow-hidden transition-all duration-300 origin-bottom-right flex flex-col ${isSimulatorOpen ? 'h-125 scale-100 opacity-100 translate-y-0' : 'h-0 scale-90 opacity-0 translate-y-10 pointer-events-none'}`}>
+        <div className={`mb-4 w-[400px] bg-white dark:bg-[#0a0a0a] border border-slate-200 dark:border-white/10 rounded-3xl shadow-2xl overflow-hidden transition-all duration-300 origin-bottom-right flex flex-col ${isSimulatorOpen ? 'h-[550px] scale-100 opacity-100 translate-y-0' : 'h-0 scale-90 opacity-0 translate-y-10 pointer-events-none'}`}>
           
-          <div className="shrink-0 bg-slate-50 dark:bg-[#1a1a1a] p-4 flex justify-between items-center border-b border-slate-200 dark:border-white/5">
+          {/* WIDGET HEADER */}
+          <div className="shrink-0 bg-slate-50 dark:bg-[#111] pt-4 px-4 flex justify-between items-start">
             <div className="flex items-center gap-3">
               <div className="relative">
                 <div className="w-10 h-10 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-lg shadow-sm">✨</div>
-                <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
+                <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white dark:border-[#111] rounded-full"></div>
               </div>
               <div>
                 <h3 className="font-bold text-slate-900 dark:text-white text-sm">AI Receptionist</h3>
                 <p className="text-[11px] text-emerald-600 font-bold">Online & Listening</p>
               </div>
             </div>
-            <button onClick={() => setIsSimulatorOpen(false)} className="text-slate-400 w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200 transition-colors">✕</button>
-          </div>
-          
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50 dark:bg-[#0a0a0a] custom-scrollbar">
-            {messages.map((msg, idx) => (
-              <div key={idx} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${msg.role === "user" ? "bg-indigo-600 text-white rounded-br-sm" : "bg-white dark:bg-[#1a1a1a] border border-slate-200 dark:border-white/5 text-slate-800 dark:text-slate-200 rounded-bl-sm shadow-sm whitespace-pre-wrap"}`}>
-                  {msg.text}
-                </div>
-              </div>
-            ))}
-            {isTyping && (
-              <div className="flex justify-start">
-                <div className="bg-white dark:bg-[#1a1a1a] border border-slate-200 dark:border-white/5 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm flex gap-1.5 items-center">
-                  <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "0.15s" }}></div>
-                  <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "0.3s" }}></div>
-                </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
+            <button onClick={() => setIsSimulatorOpen(false)} className="text-slate-400 w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200 dark:hover:bg-white/10 transition-colors">✕</button>
           </div>
 
-          <div className="shrink-0 p-3 bg-white dark:bg-[#111] border-t border-slate-200 dark:border-white/5">
-            <div className="flex items-center gap-2">
-              <input 
-                type="text" 
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
-                placeholder="Message AI to book a slot..." 
-                className="flex-1 bg-slate-100 dark:bg-white/5 border-none rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
-                disabled={isTyping}
-              />
-              <button 
-                onClick={handleSendMessage}
-                disabled={isTyping || !inputText.trim()}
-                className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-              >
-                ➤
-              </button>
-            </div>
+          {/* 🌟 NAYA: THE TAB SWITCHER */}
+          <div className="shrink-0 bg-slate-50 dark:bg-[#111] px-4 flex gap-4 border-b border-slate-200 dark:border-white/5 mt-2">
+            <button 
+              onClick={() => setActiveTab('chat')} 
+              className={`pb-2 text-xs font-bold transition-colors ${activeTab === 'chat' ? 'text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 dark:border-indigo-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'}`}
+            >
+              Web Interface
+            </button>
+            <button 
+              onClick={() => setActiveTab('whatsapp')} 
+              className={`pb-2 text-xs font-bold transition-colors flex items-center gap-1.5 ${activeTab === 'whatsapp' ? 'text-emerald-600 dark:text-emerald-400 border-b-2 border-emerald-600 dark:border-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'}`}
+            >
+              WhatsApp Bot <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
+            </button>
           </div>
+          
+          {/* TAB 1: WEB CHAT */}
+          {activeTab === 'chat' && (
+            <>
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50 dark:bg-[#050505] custom-scrollbar">
+                {messages.map((msg, idx) => (
+                  <div key={idx} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                    <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${msg.role === "user" ? "bg-indigo-600 text-white rounded-br-sm shadow-md shadow-indigo-500/20" : "bg-white dark:bg-[#111] border border-slate-200 dark:border-white/5 text-slate-800 dark:text-slate-200 rounded-bl-sm shadow-sm whitespace-pre-wrap"}`}>
+                      {msg.text}
+                    </div>
+                  </div>
+                ))}
+                {isTyping && (
+                  <div className="flex justify-start">
+                    <div className="bg-white dark:bg-[#111] border border-slate-200 dark:border-white/5 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm flex gap-1.5 items-center">
+                      <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "0.15s" }}></div>
+                      <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "0.3s" }}></div>
+                    </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+
+              <div className="shrink-0 p-3 bg-white dark:bg-[#0a0a0a] border-t border-slate-200 dark:border-white/5">
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="text" 
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
+                    placeholder="Message AI to book a slot..." 
+                    className="flex-1 bg-slate-100 dark:bg-white/5 border border-transparent focus:border-indigo-500/50 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-white outline-none transition-all"
+                    disabled={isTyping}
+                  />
+                  <button onClick={handleSendMessage} disabled={isTyping || !inputText.trim()} className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-md">
+                    ➤
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* 🌟 NAYA: TAB 2: WHATSAPP REDIRECT */}
+          {activeTab === 'whatsapp' && (
+            <div className="flex-1 p-6 bg-slate-50/50 dark:bg-[#050505] flex flex-col items-center justify-center text-center">
+              <div className="w-20 h-20 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center text-4xl mb-4 shadow-inner">
+                💬
+              </div>
+              <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-2">Connect on WhatsApp</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Experience our AI Receptionist directly from your mobile phone.</p>
+              
+              <div className="bg-white dark:bg-[#111] p-4 rounded-xl border border-slate-200 dark:border-white/5 w-full mb-6 shadow-sm relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Sandbox Secret Code</p>
+                <p className="font-mono text-lg font-bold text-emerald-600 dark:text-emerald-400 tracking-tight">join level-plenty</p>
+              </div>
+
+              <a 
+                href="https://wa.me/14155238886?text=join%20level-plenty" 
+                target="_blank" 
+                rel="noreferrer"
+                className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-[#25D366]/20 flex items-center justify-center gap-2"
+              >
+                <span>Launch WhatsApp</span>
+                <span className="text-xl">↗</span>
+              </a>
+              <p className="text-[10px] text-slate-400 mt-4">Send the code above to +1 415 523 8886 to initiate the AI.</p>
+            </div>
+          )}
 
         </div>
 
         <button 
           onClick={() => setIsSimulatorOpen(!isSimulatorOpen)}
-          className={`w-16 h-16 rounded-full flex items-center justify-center text-2xl shadow-2xl transition-all hover:scale-105 border-4 border-white dark:border-[#050505] ${isSimulatorOpen ? 'bg-slate-800 text-white rotate-45' : 'bg-indigo-600 text-white animate-bounce'}`}
+          className={`w-16 h-16 rounded-full flex items-center justify-center text-2xl shadow-2xl transition-all hover:scale-105 border-4 border-white dark:border-[#050505] z-50 ${isSimulatorOpen ? 'bg-slate-800 text-white rotate-45' : 'bg-indigo-600 text-white animate-bounce'}`}
         >
           {isSimulatorOpen ? '✖' : '✨'}
         </button>
       </div>
 
-      {/* THE EDIT/NEW MODAL FORM */}
+      {/* THE EDIT/NEW MODAL FORM ... (Keeping this exactly the same) */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-[#0A0A0A] w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden">
