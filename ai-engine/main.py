@@ -8,6 +8,9 @@ from dotenv import load_dotenv
 # Import Local Modules
 from db import get_db_connection
 
+from fastapi import Form, Response
+from twilio.twiml.messaging_response import MessagingResponse
+
 load_dotenv()
 
 # ==========================================
@@ -281,3 +284,26 @@ def get_doctors():
         return []
     finally:
         conn.close()
+        
+# 🌟 9. NAYA ENDPOINT: THE WHATSAPP WEBHOOK (TWILIO)
+@app.post("/api/whatsapp")
+async def whatsapp_webhook(Body: str = Form(...), From: str = Form(...)):
+    """Receives message from Twilio WhatsApp, sends to AI, and returns the reply"""
+    print(f"\n📱 [WHATSAPP MSG] From {From}: {Body}")
+    
+    try:
+        # 1. Message apne Agentic Brain ko do
+        ai_reply = receptionist_agent.chat(Body)
+        
+        # 2. Twilio ka response format (TwiML XML) banao
+        twiml_response = MessagingResponse()
+        twiml_response.message(ai_reply)
+        
+        # 3. Wapas WhatsApp pe bhej do
+        return Response(content=str(twiml_response), media_type="application/xml")
+    
+    except Exception as e:
+        print(f"❌ WhatsApp Webhook Error: {e}")
+        error_msg = MessagingResponse()
+        error_msg.message("Sorry, our AI system is currently offline. Please try again later.")
+        return Response(content=str(error_msg), media_type="application/xml")
