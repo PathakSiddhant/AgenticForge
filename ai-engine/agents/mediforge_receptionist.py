@@ -32,7 +32,17 @@ def check_availability(specialty_category: str, target_date: str) -> str:
         """, (doc_ids, target_date))
         booked_records = cur.fetchall()
         
+        # 🌟 THE TIME FIX: Aaj ki date aur time check karo
+        now = datetime.now()
+        today_str = now.strftime("%Y-%m-%d")
+
         for slot in standard_slots:
+            # Agar user aaj ki date check kar raha hai, toh past slots skip kardo
+            if target_date == today_str:
+                slot_time_obj = datetime.strptime(slot, "%I:%M %p").time()
+                if slot_time_obj <= now.time():
+                    continue  # Time nikal gaya, skip maar!
+
             patients_in_this_slot = sum(1 for record in booked_records if record['booked_time'] == slot)
             if patients_in_this_slot < 2:
                 available_slots.append(slot)
