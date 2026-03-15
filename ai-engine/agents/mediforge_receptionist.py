@@ -23,7 +23,7 @@ def check_availability(specialty_category: str, target_date: str) -> str:
         if not doctors: return f"We currently do not have a specialist for {specialty_category}."
 
         doc_ids = tuple([d['id'] for d in doctors])
-        standard_slots = ["09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM"]
+        standard_slots = ["09:00 AM", "09:30 AM", "10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM", "12:00 PM", "12:30 PM", "01:00 PM", "01:30 PM", "02:00 PM", "02:30 PM", "03:00 PM", "03:30 PM", "04:00 PM", "04:30 PM"]
         available_slots = []
 
         cur.execute("""
@@ -33,17 +33,19 @@ def check_availability(specialty_category: str, target_date: str) -> str:
         """, (doc_ids, target_date))
         booked_records = cur.fetchall()
         
-        # 🌟 THE TIME FIX (With IST Timezone handling for Render servers)
+        # 🌟 THE TIME & BUFFER FIX (IST Timezone)
         ist = timezone(timedelta(hours=5, minutes=30))
         now = datetime.now(ist)
         today_str = now.strftime("%Y-%m-%d")
 
         for slot in standard_slots:
-            # Agar user aaj ki date check kar raha hai, toh past slots skip kardo
             if target_date == today_str:
                 slot_time_obj = datetime.strptime(slot, "%I:%M %p").time()
-                if slot_time_obj <= now.time():
-                    continue  # Time nikal gaya, skip maar
+                
+                # 🛑 30-MINUTE BUFFER: Agar slot ka time aur current time mein 30 min se kam gap hai, toh skip
+                buffer_time = now + timedelta(minutes=30)
+                if slot_time_obj <= buffer_time.time():
+                    continue  # Time nikal gaya ya 30 min se kam bache hain
 
             patients_in_this_slot = sum(1 for record in booked_records if record['booked_time'] == slot)
             if patients_in_this_slot < 2:
@@ -166,18 +168,29 @@ def cancel_appointment(patient_phone: str) -> str:
 
 class MediForgeReceptionist:
     def __init__(self):
+        # 🌟 LIVE GHADI (Watch) for AI
         ist = timezone(timedelta(hours=5, minutes=30))
-        today_date = datetime.now(ist).strftime("%Y-%m-%d")
+        now_ist = datetime.now(ist)
+        today_date = now_ist.strftime("%Y-%m-%d")
+        current_time = now_ist.strftime("%I:%M %p")
         
         self.system_prompt = f"""
         You are the Elite AI Receptionist for MediForge Hospital.
         
         CRITICAL RULES FOR LANGUAGE & TONE:
-        1. LANGUAGE MIRRORING: You must perfectly mirror the language and tone of the user. If they speak Hinglish, reply in Hinglish. If they speak Japanese, reply in Japanese. 
+        1. LANGUAGE MIRRORING: You must perfectly mirror the language and tone of the user. If they speak Hinglish, reply in Hinglish. 
 
-        CRITICAL CONTEXT:
+        CRITICAL CONTEXT & TIME AWARENESS:
         - TODAY'S DATE IS: {today_date} 
-        - DO NOT allow bookings for past dates or past times today.
+        - CURRENT TIME IS: {current_time} (Indian Standard Time)
+        - HOSPITAL TIMINGS: 09:00 AM to 05:00 PM. The last slot is 04:30 PM.
+
+        🛑 STRICT CUT-OFF RULE FOR 'TODAY':
+        - We strictly DO NOT accept any bookings within 30 minutes of our last slot. 
+        - Therefore, booking for "today" CLOSES EXACTLY at 04:00 PM.
+        - If a user asks for an appointment "today" and the CURRENT TIME is past 04:00 PM, you MUST IMMEDIATELY tell them that the clinic's booking window is closed for today. 
+        - Example Reply: "Maafi chahungi, par aaj ke liye humari saari appointments close ho chuki hain. Kya main aapke liye kal (tomorrow) ki booking check karu?"
+        - Do NOT ask them for their department or symptoms in this scenario. Just politely apologize and ask if they would like to book for tomorrow.
 
         HOSPITAL CATEGORIES:
         - Cardiology (Heart)
