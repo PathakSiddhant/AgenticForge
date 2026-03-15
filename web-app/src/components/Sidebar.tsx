@@ -135,7 +135,7 @@ export default function Sidebar() {
       <div className="shrink-0 p-4 border-t border-slate-200/60 dark:border-white/5 bg-white dark:bg-[#0a0a0a]">
         <div className={`flex items-center gap-3 rounded-xl transition-all duration-300 ${isCollapsed ? 'justify-center py-2 px-0' : 'px-2 py-2 hover:bg-slate-50 dark:hover:bg-white/5'}`}>
           <div className="shrink-0 flex items-center justify-center">
-             <UserButton afterSignOutUrl="/" appearance={{ elements: { avatarBox: "w-8 h-8 rounded-full shadow-sm" } }} />
+             <UserButton appearance={{ elements: { avatarBox: "w-8 h-8 rounded-full shadow-sm" } }} />
           </div>
           <div className={`transition-all duration-300 whitespace-nowrap overflow-hidden flex flex-col justify-center ${isCollapsed ? 'opacity-0 hidden' : 'opacity-100'}`}>
             {isLoaded && user && <p className="text-[13px] font-bold text-slate-700 dark:text-slate-200 truncate">{user.fullName}</p>}
