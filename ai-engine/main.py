@@ -1,5 +1,6 @@
 # Path: ai-engine/main.py
-
+import os
+from fastapi.staticfiles import StaticFiles
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -80,6 +81,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ==========================================
+# 📂 HOST STATIC FILES (FOR PDF DOWNLOADS)
+# ==========================================
+os.makedirs("static", exist_ok=True) # Agar folder nahi hai toh bana dega
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 # ==========================================

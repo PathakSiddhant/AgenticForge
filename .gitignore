@@ -115,3 +115,6 @@ htmlcov/
 dist/
 build/
 out/
+
+ai-engine/static/*.pdf
+.env

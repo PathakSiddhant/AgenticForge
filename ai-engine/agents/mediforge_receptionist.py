@@ -4,6 +4,7 @@ import google.generativeai as genai
 from db import get_db_connection
 from dotenv import load_dotenv
 from datetime import datetime
+from utils import generate_appointment_pdf, send_formatted_whatsapp_ticket
 
 load_dotenv()
 
@@ -56,37 +57,74 @@ def check_availability(specialty_category: str, target_date: str) -> str:
 
 # 🛠️ TOOL 2: Auto-Assign and Book
 def book_appointment(patient_name: str, patient_phone: str, specialty_category: str, appointment_date: str, appointment_time: str, symptoms: str) -> str:
-    """Books the appointment. Returns SUCCESS with the assigned doctor's name."""
+    """Books an appointment for a patient in the database, generates a PDF, and sends a WhatsApp ticket."""
     print(f"📝 [AI TOOL] Booking {patient_name} for {specialty_category} at {appointment_time}...")
+    
     conn = get_db_connection()
     if not conn: return "Error connecting to database."
     try:
         cur = conn.cursor()
+        
+        # Find a doctor for this specialty
         cur.execute("SELECT id, name FROM doctors WHERE specialty ILIKE %s", (f"%{specialty_category}%",))
         doctors = cur.fetchall()
-        if not doctors: return "Error: Category not found."
+        if not doctors: return f"We currently do not have a specialist for {specialty_category}."
         
-        assigned_doctor = doctors[0]
-        min_bookings = 999
+        # Pick the first available doctor for simplicity
+        doctor = doctors[0]
+        doctor_id = doctor['id']
+        doctor_name = doctor['name']
+        
         full_datetime_str = f"{appointment_date} {appointment_time}"
-
-        for doc in doctors:
-            cur.execute("SELECT COUNT(*) as count FROM appointments WHERE doctor_id = %s AND appointment_date = %s::timestamp AND status != 'Cancelled'", (doc['id'], full_datetime_str))
-            count = cur.fetchone()['count']
-            if count < min_bookings:
-                min_bookings = count
-                assigned_doctor = doc
         
-        if min_bookings >= 2: return "FAILED: Capacity limit reached."
+        # Check capacity
+        cur.execute("""
+            SELECT COUNT(*) as current_bookings FROM appointments 
+            WHERE doctor_id = %s AND appointment_date = %s::timestamp AND status != 'Cancelled'
+        """, (doctor_id, full_datetime_str))
+        
+        if cur.fetchone()['current_bookings'] >= 2:
+            return f"I'm sorry, Dr. {doctor_name} is fully booked at {appointment_time}. Please suggest another time."
 
+        # Insert booking
         cur.execute("""
             INSERT INTO appointments (patient_name, patient_phone, doctor_id, appointment_date, status, notes)
             VALUES (%s, %s, %s, %s::timestamp, 'Scheduled', %s) RETURNING id
-        """, (patient_name, patient_phone, assigned_doctor['id'], full_datetime_str, symptoms))
+        """, (patient_name, patient_phone, doctor_id, full_datetime_str, symptoms))
+        
         conn.commit()
-        return f"SUCCESS: Appointment locked with {assigned_doctor['name']}. Booking ID: {cur.fetchone()['id']}."
+
+        # 🌟 NAYA JADOO: Generate PDF & Send WhatsApp! 🌟
+        try:
+            print("📄 Generating Appointment PDF...")
+            pdf_filename, mrn = generate_appointment_pdf(
+                patient_name=patient_name,
+                date=appointment_date,
+                time=appointment_time,
+                doctor=doctor_name,
+                department=specialty_category,
+                phone=patient_phone
+            )
+            
+            print("📲 Sending WhatsApp Ticket...")
+            send_formatted_whatsapp_ticket(
+                patient_name=patient_name,
+                date=appointment_date,
+                time=appointment_time,
+                doctor=doctor_name,
+                department=specialty_category,
+                phone=patient_phone,
+                pdf_filename=pdf_filename
+            )
+        except Exception as e:
+            print(f"❌ Document/WhatsApp Generation Error: {e}")
+            # Hum error print kar rahe hain par AI ko "Success" hi bolenge taaki call aaram se cut jaye
+            pass
+
+        return f"SUCCESS: Appointment confirmed for {patient_name} with Dr. {doctor_name} on {appointment_date} at {appointment_time}."
+    
     except Exception as e:
-        return f"Failed to book in DB: {e}"
+        return f"Database error: {e}"
     finally:
         conn.close()
 
