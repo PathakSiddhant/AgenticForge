@@ -26,7 +26,7 @@ export default function ItineraryPlanner() {
     setResult(null);
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/travel/itinerary-planner", {
+      const res = await fetch("http://https://agenticforge.onrender.com/api/travel/itinerary-planner", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

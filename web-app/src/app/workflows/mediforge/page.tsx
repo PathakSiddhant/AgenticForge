@@ -61,8 +61,8 @@ export default function MediForgeDashboard() {
     setIsLoading(true);
     try {
       const [aptRes, docRes] = await Promise.all([
-        fetch("http://127.0.0.1:8000/api/mediforge/appointments"),
-        fetch("http://127.0.0.1:8000/api/mediforge/doctors")
+        fetch("http://https://agenticforge.onrender.com/api/mediforge/appointments"),
+        fetch("http://https://agenticforge.onrender.com/api/mediforge/doctors")
       ]);
       if (aptRes.ok) setAppointments(await aptRes.json());
       if (docRes.ok) setDoctors(await docRes.json());
@@ -112,7 +112,7 @@ export default function MediForgeDashboard() {
       setIsSubmitting(false); return;
     }
     try {
-      const res = await fetch(editingId ? `http://127.0.0.1:8000/api/mediforge/appointments/${editingId}` : "http://127.0.0.1:8000/api/mediforge/appointments/manual", {
+      const res = await fetch(editingId ? `http://https://agenticforge.onrender.com/api/mediforge/appointments/${editingId}` : "http://https://agenticforge.onrender.com/api/mediforge/appointments/manual", {
         method: editingId ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...formData, doctor_id: parseInt(formData.doctor_id) })
       });
       if ((await res.json()).status === "success") { setIsModalOpen(false); fetchData(); }
@@ -128,7 +128,7 @@ export default function MediForgeDashboard() {
     if (!editingId || !confirm("Are you sure you want to completely remove this appointment?")) return;
     setIsSubmitting(true);
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/mediforge/appointments/${editingId}`, { method: "DELETE" });
+      const res = await fetch(`http://https://agenticforge.onrender.com/api/mediforge/appointments/${editingId}`, { method: "DELETE" });
       if ((await res.json()).status === "success") { setIsModalOpen(false); fetchData(); }
     } catch (error) { 
       console.error(error); 
@@ -142,7 +142,7 @@ export default function MediForgeDashboard() {
     setMessages(prev => [...prev, { role: "user", text: inputText }]);
     const userMsg = inputText; setInputText(""); setIsTyping(true);
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/mediforge/chat", {
+      const res = await fetch("http://https://agenticforge.onrender.com/api/mediforge/chat", {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: userMsg })
       });
       const data = await res.json();
