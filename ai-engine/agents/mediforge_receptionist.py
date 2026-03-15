@@ -3,7 +3,7 @@ import os
 import google.generativeai as genai
 from db import get_db_connection
 from dotenv import load_dotenv
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from utils import generate_appointment_pdf, send_formatted_whatsapp_ticket
 
 load_dotenv()
@@ -33,8 +33,9 @@ def check_availability(specialty_category: str, target_date: str) -> str:
         """, (doc_ids, target_date))
         booked_records = cur.fetchall()
         
-        # 🌟 THE TIME FIX: Aaj ki date aur time check karo
-        now = datetime.now()
+        # 🌟 THE TIME FIX (With IST Timezone handling for Render servers)
+        ist = timezone(timedelta(hours=5, minutes=30))
+        now = datetime.now(ist)
         today_str = now.strftime("%Y-%m-%d")
 
         for slot in standard_slots:
@@ -42,7 +43,7 @@ def check_availability(specialty_category: str, target_date: str) -> str:
             if target_date == today_str:
                 slot_time_obj = datetime.strptime(slot, "%I:%M %p").time()
                 if slot_time_obj <= now.time():
-                    continue  # Time nikal gaya, skip maar!
+                    continue  # Time nikal gaya, skip maar
 
             patients_in_this_slot = sum(1 for record in booked_records if record['booked_time'] == slot)
             if patients_in_this_slot < 2:
@@ -65,19 +66,16 @@ def book_appointment(patient_name: str, patient_phone: str, specialty_category: 
     try:
         cur = conn.cursor()
         
-        # Find a doctor for this specialty
         cur.execute("SELECT id, name FROM doctors WHERE specialty ILIKE %s", (f"%{specialty_category}%",))
         doctors = cur.fetchall()
         if not doctors: return f"We currently do not have a specialist for {specialty_category}."
         
-        # Pick the first available doctor for simplicity
         doctor = doctors[0]
         doctor_id = doctor['id']
         doctor_name = doctor['name']
         
         full_datetime_str = f"{appointment_date} {appointment_time}"
         
-        # Check capacity
         cur.execute("""
             SELECT COUNT(*) as current_bookings FROM appointments 
             WHERE doctor_id = %s AND appointment_date = %s::timestamp AND status != 'Cancelled'
@@ -86,7 +84,6 @@ def book_appointment(patient_name: str, patient_phone: str, specialty_category: 
         if cur.fetchone()['current_bookings'] >= 2:
             return f"I'm sorry, Dr. {doctor_name} is fully booked at {appointment_time}. Please suggest another time."
 
-        # Insert booking
         cur.execute("""
             INSERT INTO appointments (patient_name, patient_phone, doctor_id, appointment_date, status, notes)
             VALUES (%s, %s, %s, %s::timestamp, 'Scheduled', %s) RETURNING id
@@ -94,31 +91,20 @@ def book_appointment(patient_name: str, patient_phone: str, specialty_category: 
         
         conn.commit()
 
-        # 🌟 NAYA JADOO: Generate PDF & Send WhatsApp! 🌟
         try:
             print("📄 Generating Appointment PDF...")
             pdf_filename, mrn = generate_appointment_pdf(
-                patient_name=patient_name,
-                date=appointment_date,
-                time=appointment_time,
-                doctor=doctor_name,
-                department=specialty_category,
-                phone=patient_phone
+                patient_name=patient_name, date=appointment_date, time=appointment_time,
+                doctor=doctor_name, department=specialty_category, phone=patient_phone
             )
             
             print("📲 Sending WhatsApp Ticket...")
             send_formatted_whatsapp_ticket(
-                patient_name=patient_name,
-                date=appointment_date,
-                time=appointment_time,
-                doctor=doctor_name,
-                department=specialty_category,
-                phone=patient_phone,
-                pdf_filename=pdf_filename
+                patient_name=patient_name, date=appointment_date, time=appointment_time,
+                doctor=doctor_name, department=specialty_category, phone=patient_phone, pdf_filename=pdf_filename
             )
         except Exception as e:
             print(f"❌ Document/WhatsApp Generation Error: {e}")
-            # Hum error print kar rahe hain par AI ko "Success" hi bolenge taaki call aaram se cut jaye
             pass
 
         return f"SUCCESS: Appointment confirmed for {patient_name} with Dr. {doctor_name} on {appointment_date} at {appointment_time}."
@@ -128,7 +114,7 @@ def book_appointment(patient_name: str, patient_phone: str, specialty_category: 
     finally:
         conn.close()
 
-# 🌟 NAYA 🛠️ TOOL 3: Lookup Appointment (The AI's Memory)
+# 🛠️ TOOL 3: Lookup Appointment
 def lookup_appointment(patient_phone: str) -> str:
     """Finds an existing appointment for a patient using their phone number."""
     print(f"🔎 [AI TOOL] Looking up details for {patient_phone}...")
@@ -180,7 +166,8 @@ def cancel_appointment(patient_phone: str) -> str:
 
 class MediForgeReceptionist:
     def __init__(self):
-        today_date = datetime.now().strftime("%Y-%m-%d")
+        ist = timezone(timedelta(hours=5, minutes=30))
+        today_date = datetime.now(ist).strftime("%Y-%m-%d")
         
         self.system_prompt = f"""
         You are the Elite AI Receptionist for MediForge Hospital.
@@ -190,7 +177,7 @@ class MediForgeReceptionist:
 
         CRITICAL CONTEXT:
         - TODAY'S DATE IS: {today_date} 
-        - DO NOT allow bookings for past dates.
+        - DO NOT allow bookings for past dates or past times today.
 
         HOSPITAL CATEGORIES:
         - Cardiology (Heart)
@@ -206,7 +193,7 @@ class MediForgeReceptionist:
 
         🛑 RESCHEDULE / CANCEL LOGIC:
         1. Ask for Phone Number.
-        2. USE `lookup_appointment` to find their details (Name and Specialty). DO NOT ask the user for their specialty.
+        2. USE `lookup_appointment` to find their details. DO NOT ask the user for their specialty.
         3. If Canceling: Use `cancel_appointment` and confirm.
         4. If Rescheduling: Ask for new date/time -> `check_availability` -> `cancel_appointment` -> `book_appointment`.
         """
@@ -214,7 +201,6 @@ class MediForgeReceptionist:
         self.model = genai.GenerativeModel(
             model_name="gemini-2.5-flash", 
             system_instruction=self.system_prompt,
-            # 🌟 NAYA: Added lookup_appointment to the tools array
             tools=[check_availability, book_appointment, lookup_appointment, cancel_appointment] 
         )
         self.chat_session = self.model.start_chat(enable_automatic_function_calling=True)
