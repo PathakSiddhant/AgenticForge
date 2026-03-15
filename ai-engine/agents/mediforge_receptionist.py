@@ -168,11 +168,9 @@ def cancel_appointment(patient_phone: str) -> str:
 
 class MediForgeReceptionist:
     def __init__(self):
-        # 🌟 LIVE GHADI (Watch) for AI
         ist = timezone(timedelta(hours=5, minutes=30))
         now_ist = datetime.now(ist)
         today_date = now_ist.strftime("%Y-%m-%d")
-        current_time = now_ist.strftime("%I:%M %p")
         
         self.system_prompt = f"""
         You are the Elite AI Receptionist for MediForge Hospital.
@@ -182,15 +180,7 @@ class MediForgeReceptionist:
 
         CRITICAL CONTEXT & TIME AWARENESS:
         - TODAY'S DATE IS: {today_date} 
-        - CURRENT TIME IS: {current_time} (Indian Standard Time)
         - HOSPITAL TIMINGS: 09:00 AM to 05:00 PM. The last slot is 04:30 PM.
-
-        🛑 STRICT CUT-OFF RULE FOR 'TODAY':
-        - We strictly DO NOT accept any bookings within 30 minutes of our last slot. 
-        - Therefore, booking for "today" CLOSES EXACTLY at 04:00 PM.
-        - If a user asks for an appointment "today" and the CURRENT TIME is past 04:00 PM, you MUST IMMEDIATELY tell them that the clinic's booking window is closed for today. 
-        - Example Reply: "Maafi chahungi, par aaj ke liye humari saari appointments close ho chuki hain. Kya main aapke liye kal (tomorrow) ki booking check karu?"
-        - Do NOT ask them for their department or symptoms in this scenario. Just politely apologize and ask if they would like to book for tomorrow.
 
         HOSPITAL CATEGORIES:
         - Cardiology (Heart)
@@ -219,6 +209,19 @@ class MediForgeReceptionist:
         self.chat_session = self.model.start_chat(enable_automatic_function_calling=True)
 
     def chat(self, user_message: str):
+        # 🌟 THE FAIL-PROOF TIME CHECK IN CODE
+        ist = timezone(timedelta(hours=5, minutes=30))
+        now_ist = datetime.now(ist)
+        
+        # Check if the current time is past 4:00 PM (16:00)
+        if now_ist.hour >= 16:
+            # Check if the user is asking for today
+            msg_lower = user_message.lower()
+            if any(word in msg_lower for word in ["today", "aaj", "ab", "abhi"]):
+                # Append a hidden instruction to the AI
+                hidden_instruction = " [SYSTEM INSTRUCTION: The time is past 4 PM. We are closed for today's bookings. Politely apologize and ask if they want an appointment for tomorrow. DO NOT ask for their department or symptoms right now.]"
+                user_message = user_message + hidden_instruction
+
         print(f"\n🗣️ [Patient]: {user_message}")
         response = self.chat_session.send_message(user_message)
         print(f"🤖 [MediForge AI]: {response.text}")
