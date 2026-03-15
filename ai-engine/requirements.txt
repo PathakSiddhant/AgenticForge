@@ -1,5 +1,6 @@
 fastapi
 uvicorn
+python-multipart
 pydantic
 python-dotenv
 psycopg2-binary
@@ -7,3 +8,4 @@ google-generativeai
 google-genai
 twilio
 fpdf2
+PyPDF2
