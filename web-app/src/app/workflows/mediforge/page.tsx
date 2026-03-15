@@ -1,4 +1,3 @@
-// Path: web-app/src/app/workflows/mediforge/page.tsx
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -10,7 +9,7 @@ interface Doctor {
   id: number; name: string; specialty: string;
 }
 
-// 🌟 NAYA: Vapi Interface to keep TypeScript happy
+// 🌟 Vapi Interface to keep TypeScript happy
 interface VapiInstance {
   start: (assistantId: string) => Promise<void>;
   stop: () => void;
@@ -38,7 +37,6 @@ export default function MediForgeDashboard() {
 
   const [callStatus, setCallStatus] = useState<"inactive" | "connecting" | "active">("inactive");
   
-  // 🌟 FIXED: Use the custom VapiInstance interface
   const vapiRef = useRef<VapiInstance | null>(null);
 
   useEffect(() => {
@@ -57,12 +55,13 @@ export default function MediForgeDashboard() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // 🌟 FIXED: Removed extra http:// and added cache: 'no-store' to force fresh data
   const fetchData = async () => {
     setIsLoading(true);
     try {
       const [aptRes, docRes] = await Promise.all([
-        fetch("http://https://agenticforge.onrender.com/api/mediforge/appointments"),
-        fetch("http://https://agenticforge.onrender.com/api/mediforge/doctors")
+        fetch("https://agenticforge.onrender.com/api/mediforge/appointments", { cache: "no-store" }),
+        fetch("https://agenticforge.onrender.com/api/mediforge/doctors", { cache: "no-store" })
       ]);
       if (aptRes.ok) setAppointments(await aptRes.json());
       if (docRes.ok) setDoctors(await docRes.json());
@@ -103,6 +102,7 @@ export default function MediForgeDashboard() {
     setIsModalOpen(true);
   };
 
+  // 🌟 FIXED: Removed extra http://
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -112,7 +112,7 @@ export default function MediForgeDashboard() {
       setIsSubmitting(false); return;
     }
     try {
-      const res = await fetch(editingId ? `http://https://agenticforge.onrender.com/api/mediforge/appointments/${editingId}` : "http://https://agenticforge.onrender.com/api/mediforge/appointments/manual", {
+      const res = await fetch(editingId ? `https://agenticforge.onrender.com/api/mediforge/appointments/${editingId}` : "https://agenticforge.onrender.com/api/mediforge/appointments/manual", {
         method: editingId ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...formData, doctor_id: parseInt(formData.doctor_id) })
       });
       if ((await res.json()).status === "success") { setIsModalOpen(false); fetchData(); }
@@ -124,11 +124,12 @@ export default function MediForgeDashboard() {
     }
   };
 
+  // 🌟 FIXED: Removed extra http://
   const handleDelete = async () => {
     if (!editingId || !confirm("Are you sure you want to completely remove this appointment?")) return;
     setIsSubmitting(true);
     try {
-      const res = await fetch(`http://https://agenticforge.onrender.com/api/mediforge/appointments/${editingId}`, { method: "DELETE" });
+      const res = await fetch(`https://agenticforge.onrender.com/api/mediforge/appointments/${editingId}`, { method: "DELETE" });
       if ((await res.json()).status === "success") { setIsModalOpen(false); fetchData(); }
     } catch (error) { 
       console.error(error); 
@@ -137,12 +138,13 @@ export default function MediForgeDashboard() {
     }
   };
 
+  // 🌟 FIXED: Removed extra http://
   const handleSendMessage = async () => {
     if (!inputText.trim()) return;
     setMessages(prev => [...prev, { role: "user", text: inputText }]);
     const userMsg = inputText; setInputText(""); setIsTyping(true);
     try {
-      const res = await fetch("http://https://agenticforge.onrender.com/api/mediforge/chat", {
+      const res = await fetch("https://agenticforge.onrender.com/api/mediforge/chat", {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: userMsg })
       });
       const data = await res.json();
@@ -169,7 +171,6 @@ export default function MediForgeDashboard() {
       const Vapi = (await import("@vapi-ai/web")).default;
       
       const vapi = new Vapi(process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY!); 
-      // 🌟 FIXED: Cast to VapiInstance so TypeScript understands
       vapiRef.current = vapi as unknown as VapiInstance;
 
       vapi.on("call-start", () => setCallStatus("active"));

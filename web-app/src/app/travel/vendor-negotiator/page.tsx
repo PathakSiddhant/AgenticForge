@@ -27,7 +27,7 @@ export default function VendorNegotiator() {
     setResult(null);
 
     try {
-      const res = await fetch("http://https://agenticforge.onrender.com/api/travel/vendor-negotiator", {
+      const res = await fetch("https://agenticforge.onrender.com/api/travel/vendor-negotiator", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -26,7 +26,7 @@ export default function CrisisManager() {
     setResult(null);
 
     try {
-      const res = await fetch("http://https://agenticforge.onrender.com/api/travel/crisis-manager", {
+      const res = await fetch("https://agenticforge.onrender.com/api/travel/crisis-manager", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
