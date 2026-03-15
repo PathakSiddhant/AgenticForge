@@ -25,7 +25,7 @@ export default function ContentRepurposerDashboard() {
     setData(null);
 
     try {
-      const res = await fetch("http://localhost:8000/api/media/content-repurposer", {
+      const res = await fetch("https://agenticforge.onrender.com/api/media/content-repurposer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 

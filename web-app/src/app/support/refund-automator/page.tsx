@@ -28,7 +28,7 @@ export default function RefundAutomatorDashboard() {
     setData(null);
 
     try {
-      const res = await fetch("http://localhost:8000/api/support/refund-automator", {
+      const res = await fetch("https://agenticforge.onrender.com/api/support/refund-automator", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 

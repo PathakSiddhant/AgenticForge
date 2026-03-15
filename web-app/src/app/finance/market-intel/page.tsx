@@ -32,7 +32,7 @@ export default function MarketIntelDashboard() {
     setData(null);
 
     try {
-      const res = await fetch("http://localhost:8000/api/finance/intel", {
+      const res = await fetch("https://agenticforge.onrender.com/api/finance/intel", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ company: company }),

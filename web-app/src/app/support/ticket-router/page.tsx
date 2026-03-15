@@ -25,7 +25,7 @@ export default function TicketRouterDashboard() {
     setData(null);
 
     try {
-      const res = await fetch("http://localhost:8000/api/support/ticket-router", {
+      const res = await fetch("https://agenticforge.onrender.com/api/support/ticket-router", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 

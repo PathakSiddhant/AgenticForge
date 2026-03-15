@@ -29,7 +29,7 @@ export default function FreightOptimizerDashboard() {
     setData(null);
 
     try {
-      const res = await fetch("http://localhost:8000/api/logistics/freight-optimizer", {
+      const res = await fetch("https://agenticforge.onrender.com/api/logistics/freight-optimizer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 

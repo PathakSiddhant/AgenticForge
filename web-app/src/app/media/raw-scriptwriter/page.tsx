@@ -27,7 +27,7 @@ export default function RawScriptwriterDashboard() {
     setData(null);
 
     try {
-      const res = await fetch("http://localhost:8000/api/media/raw-scriptwriter", {
+      const res = await fetch("https://agenticforge.onrender.com/api/media/raw-scriptwriter", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 

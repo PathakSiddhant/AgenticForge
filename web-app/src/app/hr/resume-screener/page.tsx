@@ -50,7 +50,7 @@ export default function ResumeScreenerDashboard() {
       formData.append("file", file);
 
       // 2. Seedha Python API ko bhej diya (No JSON headers!)
-      const aiRes = await fetch("http://localhost:8000/api/hr/resume-screener", {
+      const aiRes = await fetch("https://agenticforge.onrender.com/api/hr/resume-screener", {
         method: "POST",
         body: formData, // Browser khud isko file aur text mein set kar lega
       });

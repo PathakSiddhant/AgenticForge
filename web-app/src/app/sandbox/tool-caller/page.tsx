@@ -13,7 +13,7 @@ export default function ToolCaller() {
     setResponse(null);
 
     try {
-      const res = await fetch("http://localhost:8000/api/tool", {
+      const res = await fetch("https://agenticforge.onrender.com/api/tool", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: input }),

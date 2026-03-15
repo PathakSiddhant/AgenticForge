@@ -50,7 +50,7 @@ export default function InterviewPlannerDashboard() {
       formData.append("job_description", jd);
       formData.append("file", file);
 
-      const aiRes = await fetch("http://localhost:8000/api/hr/interview-planner", {
+      const aiRes = await fetch("https://agenticforge.onrender.com/api/hr/interview-planner", {
         method: "POST",
         body: formData,
       });

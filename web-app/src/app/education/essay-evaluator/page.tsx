@@ -26,7 +26,7 @@ export default function EssayEvaluatorDashboard() {
     setData(null);
 
     try {
-      const res = await fetch("http://localhost:8000/api/education/essay-evaluator", {
+      const res = await fetch("https://agenticforge.onrender.com/api/education/essay-evaluator", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 

@@ -26,7 +26,7 @@ export default function AutoResponderDashboard() {
     setData(null);
 
     try {
-      const res = await fetch("http://localhost:8000/api/support/auto-responder", {
+      const res = await fetch("https://agenticforge.onrender.com/api/support/auto-responder", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 

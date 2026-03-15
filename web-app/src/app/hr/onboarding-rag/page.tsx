@@ -45,7 +45,7 @@ export default function OnboardingRagDashboard() {
       formData.append("query", query);
       formData.append("file", file);
 
-      const aiRes = await fetch("http://localhost:8000/api/hr/onboarding-rag", {
+      const aiRes = await fetch("https://agenticforge.onrender.com/api/hr/onboarding-rag", {
         method: "POST",
         body: formData,
       });

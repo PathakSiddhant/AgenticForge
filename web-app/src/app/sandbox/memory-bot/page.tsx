@@ -23,7 +23,7 @@ export default function MemoryBot() {
     setLoading(true);
 
     try {
-      const res = await fetch("http://localhost:8000/api/memory", {
+      const res = await fetch("https://agenticforge.onrender.com/api/memory", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
