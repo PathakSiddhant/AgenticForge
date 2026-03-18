@@ -1,16 +1,14 @@
 # Path: ai-engine/main.py
 import os
 from fastapi.staticfiles import StaticFiles
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Form, Response, HTTPException # 🌟 NAYA: Added HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
+from typing import Optional # 🌟 NAYA: Added Optional for LeadForge models
 
 # Import Local Modules
 from db import get_db_connection
-
-from fastapi import Form, Response
-
 
 load_dotenv()
 
@@ -66,7 +64,6 @@ from agents import crisis_manager
 # Enterprise Workflow (MediForge)
 from agents.mediforge_receptionist import MediForgeReceptionist
 from twilio.twiml.messaging_response import MessagingResponse
-from fastapi import FastAPI, Request, Form, Response
 
 
 # ==========================================
@@ -160,7 +157,7 @@ class ManualBooking(BaseModel):
     doctor_id: int
     date: str  # Format: YYYY-MM-DD
     time: str  # Format: HH:MM AM/PM
-    status: str = "Scheduled"  # 🌟 NAYA: Added Status for editing
+    status: str = "Scheduled"
     notes: str
 
 # 3. Endpoint: AI Chat Simulator
@@ -192,7 +189,7 @@ def get_live_appointments():
         for appt in appointments:
             if appt['appointment_date']:
                 appt['time'] = appt['appointment_date'].strftime("%I:%M %p")
-                appt['date'] = appt['appointment_date'].strftime("%Y-%m-%d") # 🌟 NAYA: Formatted for perfect Date Math
+                appt['date'] = appt['appointment_date'].strftime("%Y-%m-%d")
                 
         return appointments
     except Exception as e:
@@ -211,7 +208,6 @@ def create_manual_appointment(booking: ManualBooking):
         cur = conn.cursor()
         full_datetime = f"{booking.date} {booking.time}"
         
-        # 🛑 STRICT LIMIT CHECK: Max 2 patients per doctor per 30-min slot
         cur.execute("""
             SELECT COUNT(*) as current_bookings FROM appointments 
             WHERE doctor_id = %s AND appointment_date = %s::timestamp AND status != 'Cancelled'
@@ -233,7 +229,7 @@ def create_manual_appointment(booking: ManualBooking):
     finally:
         conn.close()
 
-# 🌟 6. NAYA ENDPOINT: EDIT APPOINTMENT (UPDATE)
+# 6. ENDPOINT: EDIT APPOINTMENT (UPDATE)
 @app.put("/api/mediforge/appointments/{apt_id}")
 def update_appointment(apt_id: int, booking: ManualBooking):
     conn = get_db_connection()
@@ -242,7 +238,6 @@ def update_appointment(apt_id: int, booking: ManualBooking):
         cur = conn.cursor()
         full_datetime = f"{booking.date} {booking.time}"
         
-        # 🛑 STRICT LIMIT CHECK FOR EDIT (Ignoring the current appointment being edited)
         cur.execute("""
             SELECT COUNT(*) as current_bookings FROM appointments 
             WHERE doctor_id = %s AND appointment_date = %s::timestamp AND id != %s AND status != 'Cancelled'
@@ -264,7 +259,7 @@ def update_appointment(apt_id: int, booking: ManualBooking):
     finally:
         conn.close()
 
-# 🌟 7. NAYA ENDPOINT: DELETE APPOINTMENT (REMOVE)
+# 7. ENDPOINT: DELETE APPOINTMENT (REMOVE)
 @app.delete("/api/mediforge/appointments/{apt_id}")
 def delete_appointment(apt_id: int):
     conn = get_db_connection()
@@ -294,96 +289,108 @@ def get_doctors():
     finally:
         conn.close()
         
-# 🌟 9. NAYA ENDPOINT: THE WHATSAPP WEBHOOK (TWILIO)
+# 9. ENDPOINT: THE WHATSAPP WEBHOOK (TWILIO)
 @app.post("/api/whatsapp")
 async def whatsapp_webhook(Body: str = Form(...), From: str = Form(...)):
-    """Receives message from Twilio WhatsApp, sends to AI, and returns the reply"""
     print(f"\n📱 [WHATSAPP MSG] From {From}: {Body}")
-    
     try:
-        # 1. Message apne Agentic Brain ko do
         ai_reply = receptionist_agent.chat(Body)
-        
-        # 2. Twilio ka response format (TwiML XML) banao
         twiml_response = MessagingResponse()
         twiml_response.message(ai_reply)
-        
-        # 3. Wapas WhatsApp pe bhej do
         return Response(content=str(twiml_response), media_type="application/xml")
-    
     except Exception as e:
         print(f"❌ WhatsApp Webhook Error: {e}")
         error_msg = MessagingResponse()
         error_msg.message("Sorry, our AI system is currently offline. Please try again later.")
         return Response(content=str(error_msg), media_type="application/xml")
     
-
-# 🌟 10. THE FINAL BOSS: VAPI.AI VOICE WEBHOOK
-import json  # 🌟 NAYA: JSON import for parsing Vapi string
+# 10. THE FINAL BOSS: VAPI.AI VOICE WEBHOOK
+import json
 
 @app.post("/api/vapi/webhook")
 async def vapi_webhook(request: Request):
-    """Handles Real-Time Voice AI Tool Calls from Vapi.ai"""
     try:
         payload = await request.json()
         message = payload.get("message", {})
 
         if message.get("type") == "tool-calls":
             results = []
-            
             from agents.mediforge_receptionist import check_availability, book_appointment, lookup_appointment, cancel_appointment
 
             for tool_call in message.get("toolCalls", []):
                 function_name = tool_call.get("function", {}).get("name")
-                
-                # 🌟 THE FIX: Get the raw arguments string and parse it!
                 raw_arguments = tool_call.get("function", {}).get("arguments", "{}")
                 
                 if isinstance(raw_arguments, str):
-                    arguments = json.loads(raw_arguments)  # String to Dictionary
+                    arguments = json.loads(raw_arguments)
                 else:
                     arguments = raw_arguments
 
                 call_id = tool_call.get("id")
-
                 print(f"\n📞 [VOICE AI ACTION] Calling {function_name} with: {arguments}")
-
                 result_str = ""
                 
                 if function_name == "check_availability":
                     result_str = check_availability(arguments.get("specialty_category"), arguments.get("target_date"))
-                
                 elif function_name == "book_appointment":
-                    # Added a fallback for symptoms just in case Vapi misses it
                     symptoms = arguments.get("symptoms", "Voice Consultation")
                     result_str = book_appointment(
-                        arguments.get("patient_name"), 
-                        arguments.get("patient_phone"), 
-                        arguments.get("specialty_category"), 
-                        arguments.get("appointment_date"), 
-                        arguments.get("appointment_time"), 
-                        symptoms
+                        arguments.get("patient_name"), arguments.get("patient_phone"), 
+                        arguments.get("specialty_category"), arguments.get("appointment_date"), 
+                        arguments.get("appointment_time"), symptoms
                     )
-                
                 elif function_name == "lookup_appointment":
                     result_str = lookup_appointment(arguments.get("patient_phone"))
-                
                 elif function_name == "cancel_appointment":
                     result_str = cancel_appointment(arguments.get("patient_phone"))
-                
                 else:
                     result_str = "Error: Unknown tool."
 
-                # Vapi ko reply bhejna
-                results.append({
-                    "toolCallId": call_id,
-                    "result": result_str
-                })
-
+                results.append({"toolCallId": call_id, "result": result_str})
             return {"results": results}
-
         return {"status": "ignored message type"}
-    
     except Exception as e:
         print(f"❌ Voice Webhook Error: {e}")
         return {"error": str(e)}
+
+
+# ==========================================
+# 🚀 ENTERPRISE WORKFLOWS: LEADFORGE ENDPOINTS
+# ==========================================
+
+# 1. Pydantic Model for LeadForge
+class LeadCreate(BaseModel):
+    name: str
+    email: str
+    company_name: Optional[str] = None
+    company_size: Optional[str] = None
+    budget: Optional[str] = None
+    timeline: Optional[str] = None
+    pain_point: Optional[str] = None
+    source: Optional[str] = "Website Form"
+
+# 2. Endpoint: Save Lead (Before AI Enrichment)
+@app.post("/api/leads/submit")
+def submit_lead(lead: LeadCreate):
+    print(f"📥 [LeadForge] New lead received from: {lead.name} ({lead.email})")
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+    
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO leads (name, email, company_name, company_size, budget, timeline, pain_point, source, lead_status)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'New') RETURNING id
+        """, (lead.name, lead.email, lead.company_name, lead.company_size, lead.budget, lead.timeline, lead.pain_point, lead.source))
+        
+        new_lead_id = cur.fetchone()['id']
+        conn.commit()
+        
+        return {"success": True, "message": "Lead captured successfully!", "lead_id": new_lead_id}
+    except Exception as e:
+        conn.rollback()
+        print(f"❌ [LeadForge] Error: {e}")
+        raise HTTPException(status_code=400, detail="Error saving lead. Maybe email already exists?")
+    finally:
+        conn.close()
