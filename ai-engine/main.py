@@ -372,6 +372,17 @@ class LeadCreate(BaseModel):
     pain_point: Optional[str] = None
     source: Optional[str] = "Website Form"
 
+# 🌟 NAYA: Pydantic Model for Editing a Lead
+class LeadUpdate(BaseModel):
+    name: str
+    email: str
+    company_name: Optional[str] = None
+    company_size: Optional[str] = None
+    budget: Optional[str] = None
+    timeline: Optional[str] = None
+    pain_point: Optional[str] = None
+    lead_status: Optional[str] = None # Jisse hum UI se Hot/Warm/Cold change kar sakein
+
 # 2. Endpoint: Save Lead (Now with AI Enrichment!)
 @app.post("/api/leads/submit")
 def submit_lead(lead: LeadCreate):
@@ -417,7 +428,7 @@ def submit_lead(lead: LeadCreate):
         raise HTTPException(status_code=400, detail="Error saving lead. Maybe email already exists?")
     finally:
         conn.close()
-        
+
 # 3. Endpoint: Fetch All Leads for Dashboard
 @app.get("/api/leads")
 def get_all_leads():
@@ -427,9 +438,9 @@ def get_all_leads():
     
     try:
         cur = conn.cursor()
-        # Fetching everything and ordering by newest first
+        # 🌟 NAYA: "company_size" query mein add kiya hai taaki edit karte waqt data null na ho
         cur.execute("""
-            SELECT id, name, email, company_name as company, ai_score as score, 
+            SELECT id, name, email, company_name as company, company_size, ai_score as score, 
                    lead_status as status, budget, timeline, pain_point as pain, ai_reasoning 
             FROM leads 
             ORDER BY created_at DESC
@@ -442,7 +453,29 @@ def get_all_leads():
     finally:
         conn.close()
 
-# 4. Endpoint: Delete Lead
+# 🌟 NAYA: Endpoint to Update (Edit) a Lead
+@app.put("/api/leads/{lead_id}")
+def update_lead(lead_id: int, lead: LeadUpdate):
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            UPDATE leads 
+            SET name=%s, email=%s, company_name=%s, company_size=%s, budget=%s, timeline=%s, pain_point=%s, lead_status=%s
+            WHERE id=%s
+        """, (lead.name, lead.email, lead.company_name, lead.company_size, lead.budget, lead.timeline, lead.pain_point, lead.lead_status, lead_id))
+        conn.commit()
+        return {"success": True, "message": "Lead updated successfully!"}
+    except Exception as e:
+        conn.rollback()
+        print(f"❌ [LeadForge] Error updating lead: {e}")
+        raise HTTPException(status_code=400, detail="Error updating lead")
+    finally:
+        conn.close()
+
+# 5. Endpoint: Delete Lead
 @app.delete("/api/leads/{lead_id}")
 def delete_lead(lead_id: int):
     conn = get_db_connection()
