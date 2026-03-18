@@ -417,3 +417,45 @@ def submit_lead(lead: LeadCreate):
         raise HTTPException(status_code=400, detail="Error saving lead. Maybe email already exists?")
     finally:
         conn.close()
+        
+# 3. Endpoint: Fetch All Leads for Dashboard
+@app.get("/api/leads")
+def get_all_leads():
+    conn = get_db_connection()
+    if not conn:
+        return []
+    
+    try:
+        cur = conn.cursor()
+        # Fetching everything and ordering by newest first
+        cur.execute("""
+            SELECT id, name, email, company_name as company, ai_score as score, 
+                   lead_status as status, budget, timeline, pain_point as pain, ai_reasoning 
+            FROM leads 
+            ORDER BY created_at DESC
+        """)
+        leads = cur.fetchall()
+        return leads
+    except Exception as e:
+        print(f"❌ [LeadForge] Error fetching leads: {e}")
+        return []
+    finally:
+        conn.close()
+
+# 4. Endpoint: Delete Lead
+@app.delete("/api/leads/{lead_id}")
+def delete_lead(lead_id: int):
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+    try:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM leads WHERE id = %s", (lead_id,))
+        conn.commit()
+        return {"success": True, "message": "Lead deleted"}
+    except Exception as e:
+        conn.rollback()
+        print(f"❌ [LeadForge] Error deleting lead: {e}")
+        raise HTTPException(status_code=400, detail="Error deleting lead")
+    finally:
+        conn.close()
