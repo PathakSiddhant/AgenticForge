@@ -1,7 +1,7 @@
 # Path: ai-engine/main.py
 import os
 from fastapi.staticfiles import StaticFiles
-from fastapi import FastAPI, Request, Form, Response, HTTPException # 🌟 NAYA: Added HTTPException
+from fastapi import FastAPI, Request, Form, Response, HTTPException, BackgroundTasks # 🌟 NAYA: Added HTTPException & BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -67,6 +67,7 @@ from twilio.twiml.messaging_response import MessagingResponse
 
 # 🌟 ENTERPRISE WORKFLOW (LEADFORGE AI BRAIN)
 from agents.lead_scorer import score_lead_with_ai
+from services.email_sender import send_confirmation_email 
 
 
 # ==========================================
@@ -383,9 +384,9 @@ class LeadUpdate(BaseModel):
     pain_point: Optional[str] = None
     lead_status: Optional[str] = None # Jisse hum UI se Hot/Warm/Cold change kar sakein
 
-# 2. Endpoint: Save Lead (Now with AI Enrichment!)
+# 2. Endpoint: Save Lead (Now with AI Enrichment & Auto-Email!)
 @app.post("/api/leads/submit")
-def submit_lead(lead: LeadCreate):
+def submit_lead(lead: LeadCreate, background_tasks: BackgroundTasks): # 🌟 BackgroundTasks inject kiya
     print(f"📥 [LeadForge] New lead received from: {lead.name} ({lead.email})")
     
     # 🌟 1. Call the AI Brain to score the lead first!
@@ -402,7 +403,6 @@ def submit_lead(lead: LeadCreate):
     
     try:
         cur = conn.cursor()
-        # 🌟 2. Save everything including AI Score to the DB
         cur.execute("""
             INSERT INTO leads (name, email, company_name, company_size, budget, timeline, pain_point, source, ai_score, lead_status, ai_reasoning)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
@@ -414,10 +414,21 @@ def submit_lead(lead: LeadCreate):
         
         new_lead_id = cur.fetchone()['id']
         conn.commit()
+
+        # 🌟 3. FIRE THE EMAIL IN THE BACKGROUND (UI block nahi hoga!)
+        background_tasks.add_task(
+            send_confirmation_email,
+            lead_name=lead.name,
+            lead_email=lead.email,
+            ai_status=status,
+            budget=lead.budget,
+            timeline=lead.timeline,
+            pain=lead.pain_point
+        )
         
         return {
             "success": True, 
-            "message": "Lead scored and captured successfully!", 
+            "message": "Lead scored, captured, and emailed successfully!", 
             "lead_id": new_lead_id,
             "ai_score": score,
             "status": status
