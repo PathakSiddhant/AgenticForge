@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 // 🌟 TYPESCRIPT INTERFACES
 interface Lead {
@@ -25,13 +25,7 @@ interface Meeting {
 }
 
 // --- DUMMY DATA ---
-const INITIAL_LEADS: Lead[] = [
-  { id: 1, name: "Sarah Connor", email: "sarah@cyberdyne.com", company: "CyberDyne", score: 95, status: "Hot", budget: "$10k+", timeline: "ASAP", pain: "Manual lead routing taking too long." },
-  { id: 2, name: "Bruce Wayne", email: "bruce@wayne.com", company: "Wayne Ent.", score: 88, status: "Hot", budget: "$5k - $10k", timeline: "1-3 months", pain: "Need autonomous booking system." },
-  { id: 3, name: "Clark Kent", email: "clark@dailyplanet.com", company: "Daily Planet", score: 65, status: "Warm", budget: "$1k - $5k", timeline: "3-6 months", pain: "Exploring AI for future newsrooms." },
-  { id: 4, name: "Peter Parker", email: "peter@dailybugle.com", company: "Daily Bugle", score: 30, status: "Cold", budget: "< $1k", timeline: "Just exploring", pain: "Just looking around." },
-  { id: 5, name: "Tony Stark", email: "tony@stark.com", company: "Stark Ind.", score: 99, status: "Hot", budget: "$10k+", timeline: "ASAP", pain: "Ready for enterprise deployment." },
-];
+// INITIAL_LEADS removed as per instructions
 
 const DUMMY_MEETINGS: Meeting[] = [
   { id: 101, patient: "Tony Stark", time: "10:30 AM", date: "2026-03-18", doctor: "MediForge AI", notes: "Ready to close the enterprise deal." },
@@ -42,6 +36,10 @@ const DUMMY_MEETINGS: Meeting[] = [
 export default function LeadForgeDashboard() {
   const [activeTab, setActiveTab] = useState("pipeline"); 
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // 🌟 NAYA: Real Leads State
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [isLoadingLeads, setIsLoadingLeads] = useState(true);
   
   // Modals State
   const [isSimulateModalOpen, setIsSimulateModalOpen] = useState(false);
@@ -59,13 +57,33 @@ export default function LeadForgeDashboard() {
     name: "", email: "", company_name: "", company_size: "", budget: "", timeline: "", pain_point: "",
   });
 
-  const hotCount = INITIAL_LEADS.filter(l => l.status === "Hot").length;
-  const warmCount = INITIAL_LEADS.filter(l => l.status === "Warm").length;
-  const coldCount = INITIAL_LEADS.filter(l => l.status === "Cold").length;
+  // 🌟 NAYA: Fetch Leads from Backend on Load
+  const fetchLeads = async () => {
+    try {
+      const response = await fetch("http://127.0.0.1:8000/api/leads");
+      if (response.ok) {
+        const data = await response.json();
+        setLeads(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch leads:", error);
+    } finally {
+      setIsLoadingLeads(false);
+    }
+  };
 
-  const filteredLeads = INITIAL_LEADS.filter(lead => 
+  useEffect(() => {
+    fetchLeads();
+  }, []);
+
+  // 🌟 NAYA: Calculations ab 'leads' state se hongi
+  const hotCount = leads.filter(l => l.status === "Hot").length;
+  const warmCount = leads.filter(l => l.status === "Warm").length;
+  const coldCount = leads.filter(l => l.status === "Cold").length;
+
+  const filteredLeads = leads.filter(lead => 
     lead.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    lead.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (lead.company && lead.company.toLowerCase().includes(searchQuery.toLowerCase())) ||
     lead.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -79,6 +97,7 @@ export default function LeadForgeDashboard() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  // 🌟 NAYA: Form Submit hone ke baad list ko refresh karna hai
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -91,6 +110,8 @@ export default function LeadForgeDashboard() {
       if (response.ok) {
         setSuccess(true);
         setFormData({ name: "", email: "", company_name: "", company_size: "", budget: "", timeline: "", pain_point: "" });
+        // 🌟 Refresh leads instantly!
+        fetchLeads(); 
       } else {
         alert("Failed to save lead in DB.");
       }
@@ -193,7 +214,12 @@ export default function LeadForgeDashboard() {
       </div>
 
       {/* 🌟 MAIN CONTENT */}
-      {searchQuery ? (
+      {isLoadingLeads ? (
+        <div className="flex justify-center items-center py-20">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+          <span className="ml-3 text-slate-500 font-bold">Loading leads from AI Engine...</span>
+        </div>
+      ) : searchQuery ? (
         <div>
           <h3 className="text-lg font-bold mb-4">Search Results ({filteredLeads.length})</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -456,7 +482,8 @@ export default function LeadForgeDashboard() {
             </div>
             <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                {INITIAL_LEADS.filter(l => l.status === selectedCategory).map(lead => (
+                {/* 🌟 NAYA: INITIAL_LEADS ko leads se replace kiya hai */}
+                {leads.filter(l => l.status === selectedCategory).map(lead => (
                   <LeadCard key={lead.id} lead={lead} />
                 ))}
               </div>
