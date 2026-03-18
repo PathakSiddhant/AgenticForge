@@ -21,8 +21,9 @@ export default function Sidebar() {
     { href: "/sandbox", icon: "🛠️", label: "Developer Sandbox" },
   ];
 
-  const workflowLinks = [
+const workflowLinks = [
     { href: "/workflows/mediforge", icon: "🏥", label: "MediForge Receptionist" },
+    { href: "/workflows/leadforge", icon: "👥", label: "LeadForge AI SDR" },
   ];
 
   const industryLinks = [
