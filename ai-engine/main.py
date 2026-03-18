@@ -65,6 +65,9 @@ from agents import crisis_manager
 from agents.mediforge_receptionist import MediForgeReceptionist
 from twilio.twiml.messaging_response import MessagingResponse
 
+# 🌟 ENTERPRISE WORKFLOW (LEADFORGE AI BRAIN)
+from agents.lead_scorer import score_lead_with_ai
+
 
 # ==========================================
 # 🚀 APP INITIALIZATION & CORS
@@ -369,25 +372,45 @@ class LeadCreate(BaseModel):
     pain_point: Optional[str] = None
     source: Optional[str] = "Website Form"
 
-# 2. Endpoint: Save Lead (Before AI Enrichment)
+# 2. Endpoint: Save Lead (Now with AI Enrichment!)
 @app.post("/api/leads/submit")
 def submit_lead(lead: LeadCreate):
     print(f"📥 [LeadForge] New lead received from: {lead.name} ({lead.email})")
+    
+    # 🌟 1. Call the AI Brain to score the lead first!
+    lead_dict = lead.model_dump()
+    ai_analysis = score_lead_with_ai(lead_dict)
+    
+    score = ai_analysis.get("score", 0)
+    status = ai_analysis.get("status", "New")
+    reasoning = ai_analysis.get("reasoning", "No reasoning provided.")
+    
     conn = get_db_connection()
     if not conn:
         raise HTTPException(status_code=500, detail="Database connection failed")
     
     try:
         cur = conn.cursor()
+        # 🌟 2. Save everything including AI Score to the DB
         cur.execute("""
-            INSERT INTO leads (name, email, company_name, company_size, budget, timeline, pain_point, source, lead_status)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'New') RETURNING id
-        """, (lead.name, lead.email, lead.company_name, lead.company_size, lead.budget, lead.timeline, lead.pain_point, lead.source))
+            INSERT INTO leads (name, email, company_name, company_size, budget, timeline, pain_point, source, ai_score, lead_status, ai_reasoning)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
+        """, (
+            lead.name, lead.email, lead.company_name, lead.company_size, 
+            lead.budget, lead.timeline, lead.pain_point, lead.source,
+            score, status, reasoning
+        ))
         
         new_lead_id = cur.fetchone()['id']
         conn.commit()
         
-        return {"success": True, "message": "Lead captured successfully!", "lead_id": new_lead_id}
+        return {
+            "success": True, 
+            "message": "Lead scored and captured successfully!", 
+            "lead_id": new_lead_id,
+            "ai_score": score,
+            "status": status
+        }
     except Exception as e:
         conn.rollback()
         print(f"❌ [LeadForge] Error: {e}")
