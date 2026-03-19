@@ -17,59 +17,78 @@ interface Lead {
   ai_reasoning?: string; 
 }
 
-interface Meeting {
-  id: number;
-  patient: string;
-  time: string;
-  date: string;
-  doctor: string;
-  notes: string;
+interface ScheduledMeeting {
+  meeting_id: number;
+  lead_id: number;
+  name: string;
+  email: string;
+  company_name: string;
+  company_size: string;
+  budget: string;
+  timeline: string;
+  pain_point: string;
+  ai_score: number;
+  meeting_date: string;
+  meeting_time: string;
+  meet_link: string;
 }
-
-const DUMMY_MEETINGS: Meeting[] = [
-  { id: 101, patient: "Tony Stark", time: "10:30 AM", date: "2026-03-18", doctor: "MediForge AI", notes: "Ready to close the enterprise deal." },
-  { id: 102, patient: "Bruce Wayne", time: "02:00 PM", date: "2026-03-18", doctor: "MediForge AI", notes: "Product demo scheduled." },
-  { id: 103, patient: "Sarah Connor", time: "11:00 AM", date: "2026-03-20", doctor: "MediForge AI", notes: "Follow up on pricing." },
-];
 
 export default function LeadForgeDashboard() {
   const [activeTab, setActiveTab] = useState("pipeline"); 
   const [searchQuery, setSearchQuery] = useState("");
   
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [meetings, setMeetings] = useState<ScheduledMeeting[]>([]); 
   const [isLoadingLeads, setIsLoadingLeads] = useState(true);
   
   const [isSimulateModalOpen, setIsSimulateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isManualScheduleModalOpen, setIsManualScheduleModalOpen] = useState(false); 
+  
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
-  const [selectedDateMeetings, setSelectedDateMeetings] = useState<{dateStr: string, meetings: Meeting[]} | null>(null);
+  
+  // 🌟 NAYA: State for detailed meeting panel
+  const [selectedMeetingDetail, setSelectedMeetingDetail] = useState<ScheduledMeeting | null>(null);
+  const [selectedDateMeetings, setSelectedDateMeetings] = useState<{dateStr: string, meetings: ScheduledMeeting[]} | null>(null);
   
   const [currentDate, setCurrentDate] = useState(new Date()); 
 
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  
   const [formData, setFormData] = useState({
     name: "", email: "", company_name: "", company_size: "", budget: "", timeline: "", pain_point: "",
   });
   const [editFormData, setEditFormData] = useState<Partial<Lead>>({});
+  const [scheduleData, setScheduleData] = useState({ date: "", time: "10:00 AM" });
 
-  const fetchLeads = async () => {
+  const fetchData = async () => {
+    setIsLoadingLeads(true);
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/leads");
-      if (response.ok) {
-        const data = await response.json();
-        setLeads(data);
+      const [leadsRes, meetsRes] = await Promise.all([
+        fetch("http://127.0.0.1:8000/api/leads"),
+        fetch("http://127.0.0.1:8000/api/leads/meetings")
+      ]);
+      
+      if (leadsRes.ok) {
+        const data = await leadsRes.json();
+        setLeads(data.filter((l: Lead) => l.status !== "Meeting Scheduled"));
+      }
+      
+      if (meetsRes.ok) {
+        const meetsData = await meetsRes.json();
+        setMeetings(meetsData);
       }
     } catch (error) {
-      console.error("Failed to fetch leads:", error);
+      console.error("Failed to fetch data:", error);
     } finally {
       setIsLoadingLeads(false);
     }
   };
 
   useEffect(() => {
-    fetchLeads();
+    fetchData();
   }, []);
 
   const hotCount = leads.filter(l => l.status === "Hot").length;
@@ -80,6 +99,12 @@ export default function LeadForgeDashboard() {
     lead.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     (lead.company && lead.company.toLowerCase().includes(searchQuery.toLowerCase())) ||
     lead.email.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredMeetings = meetings.filter(meet => 
+    meet.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    (meet.company_name && meet.company_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (meet.email && meet.email.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const getScoreColor = (score: number) => {
@@ -108,7 +133,7 @@ export default function LeadForgeDashboard() {
       if (response.ok) {
         setSuccess(true);
         setFormData({ name: "", email: "", company_name: "", company_size: "", budget: "", timeline: "", pain_point: "" });
-        fetchLeads(); 
+        fetchData(); 
       }
     } catch (error) {
       console.error("Error submitting lead:", error);
@@ -137,7 +162,7 @@ export default function LeadForgeDashboard() {
       });
       if (response.ok) {
         setIsEditModalOpen(false);
-        fetchLeads(); 
+        fetchData(); 
       }
     } catch (error) {
       console.error("Error editing lead:", error);
@@ -149,7 +174,6 @@ export default function LeadForgeDashboard() {
   const openEditModal = () => {
     if (selectedLead) {
       setEditFormData({ ...selectedLead });
-      setSelectedLead(null); 
       setIsEditModalOpen(true); 
     }
   };
@@ -160,10 +184,53 @@ export default function LeadForgeDashboard() {
       const response = await fetch(`http://127.0.0.1:8000/api/leads/${leadId}`, { method: 'DELETE' });
       if (response.ok) {
         setSelectedLead(null); 
-        fetchLeads(); 
+        fetchData(); 
       }
     } catch (error) {
       console.error("Error deleting lead:", error);
+    }
+  };
+
+  const handleManualSchedule = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedLead) return;
+    setLoading(true);
+    try {
+      const res = await fetch("http://127.0.0.1:8000/api/leads/schedule-manual", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lead_id: selectedLead.id,
+          date: scheduleData.date,
+          time: scheduleData.time
+        })
+      });
+      if (res.ok) {
+        setIsManualScheduleModalOpen(false);
+        setSelectedLead(null); 
+        fetchData(); 
+        alert("Meeting smoothly scheduled and Official Email sent! 🚀");
+      }
+    } catch (error) {
+      console.error("Schedule error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMarkComplete = async (leadId: number) => {
+    if (!confirm("Did you finish the meeting? This will permanently remove the lead and meeting from the database.")) return;
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/leads/meetings/${leadId}/complete`, {
+        method: "DELETE"
+      });
+      if (res.ok) {
+        setSelectedDateMeetings(null);
+        setSelectedMeetingDetail(null); // Side panel bhi band karo if active
+        fetchData();
+      }
+    } catch (error) {
+      console.error("Complete error:", error);
     }
   };
 
@@ -173,8 +240,14 @@ export default function LeadForgeDashboard() {
   const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
   const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay();
   const getDateString = (day: number) => `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  
   const currentDatePickerValue = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
   const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+  const displayedUpcomingMeetings = searchQuery 
+        ? filteredMeetings 
+        : meetings.filter(m => m.meeting_date === currentDatePickerValue);
+
 
   const LeadCard = ({ lead }: { lead: Lead }) => (
     <div onClick={() => setSelectedLead(lead)} className="bg-white dark:bg-[#111] border border-slate-200 dark:border-white/10 rounded-xl p-4 shadow-sm hover:shadow-md hover:border-blue-500/50 transition-all cursor-pointer group flex flex-col justify-between">
@@ -217,7 +290,7 @@ export default function LeadForgeDashboard() {
             <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 text-sm">🔍</span>
             <input 
               type="text" 
-              placeholder="Search leads..." 
+              placeholder={activeTab === "pipeline" ? "Search leads..." : "Search meetings..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 dark:border-white/10 bg-white dark:bg-[#111] text-sm focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
@@ -244,7 +317,7 @@ export default function LeadForgeDashboard() {
           onClick={() => setActiveTab("calendar")}
           className={`pb-2.5 px-2 text-sm font-bold transition-all ${activeTab === "calendar" ? "border-b-[3px] border-blue-500 text-blue-600 dark:text-blue-400" : "text-slate-500 hover:text-slate-700 dark:text-slate-400"}`}
         >
-          Meetings & Calendar
+          Meetings & Calendar ({meetings.length})
         </button>
       </div>
 
@@ -252,49 +325,52 @@ export default function LeadForgeDashboard() {
       {isLoadingLeads ? (
         <div className="flex justify-center items-center py-20">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-          <span className="ml-3 text-slate-500 font-bold">Loading live DB leads...</span>
-        </div>
-      ) : searchQuery ? (
-        <div>
-          <h3 className="text-lg font-bold mb-4">Search Results ({filteredLeads.length})</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {filteredLeads.map(lead => <LeadCard key={lead.id} lead={lead} />)}
-          </div>
+          <span className="ml-3 text-slate-500 font-bold">Loading live DB leads & meetings...</span>
         </div>
       ) : activeTab === "pipeline" ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          <div onClick={() => setSelectedCategory("Hot")} className="bg-white dark:bg-[#111] border border-slate-200 dark:border-white/10 rounded-2xl p-6 cursor-pointer hover:shadow-lg hover:border-orange-500/50 transition-all group relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-orange-500/10 rounded-bl-full -z-10"></div>
-            <div className="flex justify-between items-start mb-4">
-              <div className="bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400 p-2.5 rounded-xl text-xl shadow-sm">🔥</div>
-              <span className="text-3xl font-black">{hotCount}</span>
+        // PIPELINE TAB 
+        searchQuery ? (
+            <div>
+                <h3 className="text-lg font-bold mb-4">Search Results ({filteredLeads.length})</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {filteredLeads.map(lead => <LeadCard key={lead.id} lead={lead} />)}
+                </div>
             </div>
-            <h3 className="text-lg font-bold mb-1.5">Hot Leads</h3>
-            <p className="text-xs text-slate-600 dark:text-slate-400">Score 70+. Ready for immediate closing.</p>
-          </div>
+        ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div onClick={() => setSelectedCategory("Hot")} className="bg-white dark:bg-[#111] border border-slate-200 dark:border-white/10 rounded-2xl p-6 cursor-pointer hover:shadow-lg hover:border-orange-500/50 transition-all group relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-orange-500/10 rounded-bl-full -z-10"></div>
+                <div className="flex justify-between items-start mb-4">
+                <div className="bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400 p-2.5 rounded-xl text-xl shadow-sm">🔥</div>
+                <span className="text-3xl font-black">{hotCount}</span>
+                </div>
+                <h3 className="text-lg font-bold mb-1.5">Hot Leads</h3>
+                <p className="text-xs text-slate-600 dark:text-slate-400">Score 70+. Ready for immediate closing.</p>
+            </div>
 
-          <div onClick={() => setSelectedCategory("Warm")} className="bg-white dark:bg-[#111] border border-slate-200 dark:border-white/10 rounded-2xl p-6 cursor-pointer hover:shadow-lg hover:border-yellow-500/50 transition-all group relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-yellow-500/10 rounded-bl-full -z-10"></div>
-            <div className="flex justify-between items-start mb-4">
-              <div className="bg-yellow-100 dark:bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 p-2.5 rounded-xl text-xl shadow-sm">🌤️</div>
-              <span className="text-3xl font-black">{warmCount}</span>
+            <div onClick={() => setSelectedCategory("Warm")} className="bg-white dark:bg-[#111] border border-slate-200 dark:border-white/10 rounded-2xl p-6 cursor-pointer hover:shadow-lg hover:border-yellow-500/50 transition-all group relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-yellow-500/10 rounded-bl-full -z-10"></div>
+                <div className="flex justify-between items-start mb-4">
+                <div className="bg-yellow-100 dark:bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 p-2.5 rounded-xl text-xl shadow-sm">🌤️</div>
+                <span className="text-3xl font-black">{warmCount}</span>
+                </div>
+                <h3 className="text-lg font-bold mb-1.5">Warm Leads</h3>
+                <p className="text-xs text-slate-600 dark:text-slate-400">Score 40-69. Currently in automated nurturing.</p>
             </div>
-            <h3 className="text-lg font-bold mb-1.5">Warm Leads</h3>
-            <p className="text-xs text-slate-600 dark:text-slate-400">Score 40-69. Currently in automated nurturing.</p>
-          </div>
 
-          <div onClick={() => setSelectedCategory("Cold")} className="bg-white dark:bg-[#111] border border-slate-200 dark:border-white/10 rounded-2xl p-6 cursor-pointer hover:shadow-lg hover:border-slate-500/50 transition-all group relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-slate-500/10 rounded-bl-full -z-10"></div>
-            <div className="flex justify-between items-start mb-4">
-              <div className="bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-slate-300 p-2.5 rounded-xl text-xl shadow-sm">❄️</div>
-              <span className="text-3xl font-black">{coldCount}</span>
+            <div onClick={() => setSelectedCategory("Cold")} className="bg-white dark:bg-[#111] border border-slate-200 dark:border-white/10 rounded-2xl p-6 cursor-pointer hover:shadow-lg hover:border-slate-500/50 transition-all group relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-slate-500/10 rounded-bl-full -z-10"></div>
+                <div className="flex justify-between items-start mb-4">
+                <div className="bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-slate-300 p-2.5 rounded-xl text-xl shadow-sm">❄️</div>
+                <span className="text-3xl font-black">{coldCount}</span>
+                </div>
+                <h3 className="text-lg font-bold mb-1.5">Cold / Archive</h3>
+                <p className="text-xs text-slate-600 dark:text-slate-400">Score &lt; 40. Routed to newsletter workflow.</p>
             </div>
-            <h3 className="text-lg font-bold mb-1.5">Cold / Archive</h3>
-            <p className="text-xs text-slate-600 dark:text-slate-400">Score &lt; 40. Routed to newsletter workflow.</p>
-          </div>
-        </div>
+            </div>
+        )
       ) : (
-        // 🌟 CALENDAR 
+        // 🌟 CALENDAR VIEW 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           <div className="xl:col-span-2 bg-white dark:bg-[#111] border border-slate-200 dark:border-white/10 rounded-2xl p-6 shadow-sm">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
@@ -329,15 +405,12 @@ export default function LeadForgeDashboard() {
               {[...Array(daysInMonth)].map((_, i) => {
                 const day = i + 1;
                 const fullDateStr = getDateString(day);
-                const dayMeetings = DUMMY_MEETINGS.filter(m => m.date === fullDateStr);
+                const dayMeetings = meetings.filter(m => m.meeting_date === fullDateStr);
                 const isSelected = currentDate.getDate() === day;
                 return (
                   <div 
                     key={day} 
-                    onClick={() => {
-                      setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), day));
-                      if(dayMeetings.length > 0) setSelectedDateMeetings({dateStr: fullDateStr, meetings: dayMeetings});
-                    }}
+                    onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), day))}
                     className={`aspect-square rounded-lg p-2 relative transition-all flex flex-col items-center justify-center cursor-pointer border
                       ${isSelected 
                         ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-500/30 scale-105 z-10' 
@@ -360,52 +433,115 @@ export default function LeadForgeDashboard() {
           </div>
 
           <div className="space-y-4">
-            <button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl font-bold shadow-sm flex justify-center items-center gap-2 transition-transform hover:scale-[1.02] text-sm">
-              <span>📅</span> Schedule Manual Meeting
-            </button>
             <div className="bg-white dark:bg-[#111] border border-slate-200 dark:border-white/10 rounded-2xl p-5 shadow-sm">
-              <h3 className="font-bold text-base mb-4">Upcoming Calls</h3>
-              <div className="space-y-3 max-h-125 overflow-y-auto custom-scrollbar pr-1">
-                {DUMMY_MEETINGS.map((meeting) => (
-                  <div key={meeting.id} className="flex gap-3 items-center p-3 bg-slate-50 dark:bg-[#1a1a1a] rounded-xl border border-slate-100 dark:border-white/5 hover:border-blue-500/30 transition-colors">
-                    <div className="text-center min-w-15 bg-white dark:bg-[#222] p-1.5 rounded-md border border-slate-200 dark:border-white/10 shadow-sm">
-                      <p className="text-[9px] text-blue-600 dark:text-blue-400 font-bold uppercase">{meeting.date.substring(5, 7)}/{meeting.date.substring(8, 10)}</p>
-                      <p className="text-sm font-black">{meeting.time.split(' ')[0]}</p>
+              <h3 className="font-bold text-base mb-4">
+                  {searchQuery ? "Search Results" : `Calls for ${currentDatePickerValue}`}
+              </h3>
+              {displayedUpcomingMeetings.length === 0 ? (
+                  <p className="text-sm text-slate-500 text-center py-4">No meetings found.</p>
+              ) : (
+                <div className="space-y-3 max-h-[600px] overflow-y-auto custom-scrollbar pr-1">
+                  
+                  {/* 🌟 MAGIC FIX: COMPACT MEETING CARDS */}
+                  {displayedUpcomingMeetings.map((meeting) => (
+                    <div 
+                        key={meeting.meeting_id} 
+                        onClick={() => setSelectedMeetingDetail(meeting)}
+                        className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-[#1a1a1a] rounded-xl border border-slate-100 dark:border-white/5 hover:border-blue-500/50 cursor-pointer transition-all hover:shadow-md"
+                    >
+                      <div className="text-center min-w-[50px] bg-white dark:bg-[#222] p-1.5 rounded-md border border-slate-200 dark:border-white/10 shadow-sm">
+                        <p className="text-[9px] text-blue-600 dark:text-blue-400 font-bold uppercase">{meeting.meeting_date.substring(5, 7)}/{meeting.meeting_date.substring(8, 10)}</p>
+                        <p className="text-sm font-black">{meeting.meeting_time.split(' ')[0]}</p>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-bold text-sm truncate text-slate-900 dark:text-white">{meeting.name}</h4>
+                        <p className="text-[11px] font-medium text-slate-500 truncate">{meeting.company_name || "Company N/A"}</p>
+                      </div>
+                      
+                      <div className="flex flex-col gap-1.5">
+                        <a href={meeting.meet_link} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-[10px] bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1 rounded-md shadow-sm text-center font-bold">
+                          Join
+                        </a>
+                        <button onClick={(e) => { e.stopPropagation(); handleMarkComplete(meeting.lead_id); }} className="text-[10px] bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 px-2.5 py-1 rounded-md text-center font-bold">
+                          Done
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-sm truncate">{meeting.patient}</h4>
-                      <p className="text-[11px] text-slate-500 truncate mt-0.5">{meeting.notes}</p>
-                    </div>
-                    <button className="text-[11px] bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-2.5 py-1.5 rounded-md font-bold shadow-sm hover:scale-105 transition-transform">
-                      Join
-                    </button>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* 🌟 DATE MEETINGS MODAL */}
-      {selectedDateMeetings && (
-        <div style={{ zIndex: 9999 }} className="fixed inset-0 bg-slate-900/80 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#111] border border-slate-200 dark:border-white/10 rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
-            <div className="p-4 border-b border-slate-200 dark:border-white/10 flex justify-between items-center bg-slate-50 dark:bg-[#0a0a0a]">
-              <h2 className="text-base font-bold">Meetings for {selectedDateMeetings.dateStr}</h2>
-              <button onClick={() => setSelectedDateMeetings(null)} className="text-xl font-bold text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">&times;</button>
+      {/* 🌟 NAYA: DETAILED MEETING SIDE PANEL */}
+      {selectedMeetingDetail && (
+        <div style={{ zIndex: 99998 }} className="fixed inset-0 bg-slate-900/80 dark:bg-black/80 backdrop-blur-sm flex items-center justify-end">
+          <div className="bg-white dark:bg-[#111] border-l border-slate-200 dark:border-white/10 shadow-2xl w-full max-w-sm h-full flex flex-col animate-in slide-in-from-right duration-300">
+            <div className="p-5 border-b border-slate-200 dark:border-white/10 flex justify-between items-center bg-blue-600 text-white">
+              <div>
+                 <h2 className="text-lg font-bold">Meeting Details</h2>
+                 <p className="text-xs font-medium text-blue-100">{selectedMeetingDetail.meeting_date} at {selectedMeetingDetail.meeting_time}</p>
+              </div>
+              <button onClick={() => setSelectedMeetingDetail(null)} className="text-2xl font-bold text-blue-200 hover:text-white transition-colors">&times;</button>
             </div>
-            <div className="p-4 space-y-3 max-h-[50vh] overflow-y-auto">
-              {selectedDateMeetings.meetings.map(meeting => (
-                <div key={meeting.id} className="p-3 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-100 dark:border-white/5">
-                  <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-bold text-sm">{meeting.patient}</h4>
-                    <span className="bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400 font-bold text-xs px-2 py-0.5 rounded-md">{meeting.time}</span>
-                  </div>
-                  <p className="text-xs text-slate-600 dark:text-slate-400 mb-3 bg-white dark:bg-[#1a1a1a] p-2 rounded-lg border border-slate-200 dark:border-white/5">&quot;{meeting.notes}&quot;</p>
-                  <button className="w-full text-xs bg-slate-900 dark:bg-white text-white dark:text-slate-900 py-2 rounded-lg font-bold shadow-sm">Join Room</button>
+            
+            <div className="p-6 flex-1 overflow-y-auto bg-slate-50 dark:bg-[#0a0a0a]">
+              <div className="mb-6">
+                 <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-1">{selectedMeetingDetail.name}</h3>
+                 <p className="text-sm font-bold text-blue-600 dark:text-blue-400">{selectedMeetingDetail.company_name || "Company N/A"}</p>
+              </div>
+              
+              <div className="space-y-3">
+                <div className="bg-white dark:bg-[#1a1a1a] p-4 rounded-xl border border-slate-200 dark:border-white/5 shadow-sm">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Contact Email</p>
+                  <p className="font-bold text-sm text-slate-900 dark:text-white">{selectedMeetingDetail.email || "N/A"}</p>
                 </div>
-              ))}
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-white dark:bg-[#1a1a1a] p-4 rounded-xl border border-slate-200 dark:border-white/5 shadow-sm">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Company Size</p>
+                    <p className="font-bold text-sm text-slate-900 dark:text-white">{selectedMeetingDetail.company_size || "N/A"}</p>
+                  </div>
+                  <div className="bg-white dark:bg-[#1a1a1a] p-4 rounded-xl border border-slate-200 dark:border-white/5 shadow-sm">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Budget</p>
+                    <p className="font-bold text-sm text-slate-900 dark:text-white">{selectedMeetingDetail.budget || "N/A"}</p>
+                  </div>
+                </div>
+
+                <div className="bg-white dark:bg-[#1a1a1a] p-4 rounded-xl border border-slate-200 dark:border-white/5 shadow-sm flex justify-between items-center">
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Timeline</p>
+                    <p className="font-bold text-sm text-slate-900 dark:text-white">{selectedMeetingDetail.timeline || "N/A"}</p>
+                  </div>
+                  <div className={`px-2 py-1 rounded-md text-xs font-bold border ${getScoreColor(selectedMeetingDetail.ai_score)}`}>
+                     🤖 Score: {selectedMeetingDetail.ai_score}
+                  </div>
+                </div>
+                
+                <div className="pt-2">
+                   <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Pre-Call Context (Pain Point)</h4>
+                   <p className="text-sm italic text-slate-700 dark:text-slate-300 p-4 bg-white dark:bg-[#1a1a1a] rounded-xl border border-slate-200 dark:border-white/5 shadow-inner">
+                     &quot;{selectedMeetingDetail.pain_point || "No specific needs mentioned."}&quot;
+                   </p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-5 border-t border-slate-200 dark:border-white/10 space-y-2.5 bg-white dark:bg-[#111]">
+              <a 
+                href={selectedMeetingDetail.meet_link} target="_blank" rel="noreferrer"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold shadow-sm flex justify-center items-center gap-2 transition-transform hover:scale-[1.02] text-sm"
+              >
+                🎥 Join Google Meet
+              </a>
+              <button 
+                onClick={() => handleMarkComplete(selectedMeetingDetail.lead_id)}
+                className="w-full bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 py-3 rounded-xl font-bold transition-colors flex justify-center items-center gap-2 text-sm"
+              >
+                ✅ Mark Meeting as Done
+              </button>
             </div>
           </div>
         </div>
@@ -432,9 +568,9 @@ export default function LeadForgeDashboard() {
         </div>
       )}
 
-      {/* 🌟 SIMULATE LEAD FORM MODAL */}
+{/* 🌟 SIMULATE LEAD FORM MODAL (RESTORED TO PREMIUM UI) */}
       {isSimulateModalOpen && (
-        <div style={{ zIndex: 9999 }} className="fixed inset-0 bg-slate-900/80 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+        <div style={{ zIndex: 99999 }} className="fixed inset-0 bg-slate-900/80 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white dark:bg-[#0a0a0a] border border-slate-200 dark:border-white/10 rounded-xl shadow-xl w-full max-w-2xl flex flex-col relative my-4">
             
             <div className="p-5 border-b border-slate-200 dark:border-white/10 flex justify-between items-center bg-slate-50 dark:bg-[#111] rounded-t-xl">
@@ -525,10 +661,10 @@ export default function LeadForgeDashboard() {
         </div>
       )}
 
-      {/* 🌟 EDIT LEAD MODAL */}
+      {/* 🌟 EDIT LEAD MODAL (Z-Index 100000 pe set hai, koi blur issue nahi) */}
       {isEditModalOpen && (
-        <div style={{ zIndex: 9999 }} className="fixed inset-0 bg-slate-900/80 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-[#0a0a0a] border border-slate-200 dark:border-white/10 rounded-xl shadow-xl w-full max-w-2xl flex flex-col relative my-4">
+        <div style={{ zIndex: 100000 }} className="fixed inset-0 bg-slate-900/90 dark:bg-black/90 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-[#0a0a0a] border border-slate-200 dark:border-white/20 rounded-xl shadow-2xl w-full max-w-2xl flex flex-col relative my-4 transform transition-all scale-100">
             <div className="p-5 border-b border-slate-200 dark:border-white/10 flex justify-between items-center bg-slate-50 dark:bg-[#111] rounded-t-xl">
               <div>
                 <h2 className="text-lg font-bold text-slate-900 dark:text-white">Edit Lead Data</h2>
@@ -616,9 +752,34 @@ export default function LeadForgeDashboard() {
         </div>
       )}
 
-      {/* 🌟 LEAD DETAIL SIDE PANEL (UPDATED UI) */}
+      {/* 🌟 MANUAL SCHEDULE MODAL */}
+      {isManualScheduleModalOpen && selectedLead && (
+        <div style={{ zIndex: 99999 }} className="fixed inset-0 bg-slate-900/80 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#111] w-full max-w-sm rounded-2xl shadow-2xl p-6 border border-slate-200 dark:border-white/10">
+            <h3 className="text-lg font-bold mb-4">Book call with {selectedLead.name}</h3>
+            <form onSubmit={handleManualSchedule} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Date</label>
+                <input required type="date" value={scheduleData.date} onChange={e => setScheduleData({...scheduleData, date: e.target.value})} className="w-full bg-slate-50 dark:bg-[#1a1a1a] border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2 text-sm outline-none" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Time</label>
+                <input required type="text" placeholder="e.g. 02:00 PM" value={scheduleData.time} onChange={e => setScheduleData({...scheduleData, time: e.target.value})} className="w-full bg-slate-50 dark:bg-[#1a1a1a] border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2 text-sm outline-none" />
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button type="button" onClick={() => setIsManualScheduleModalOpen(false)} className="flex-1 bg-slate-100 dark:bg-white/5 py-2 rounded-lg font-bold text-sm">Cancel</button>
+                <button type="submit" disabled={loading} className={`flex-1 text-white py-2 rounded-lg font-bold text-sm shadow-md ${loading ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-500'}`}>
+                  {loading ? "Booking..." : "Book & Email"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 🌟 LEAD DETAIL SIDE PANEL (ORIGINAL) */}
       {selectedLead && (
-        <div style={{ zIndex: 9999 }} className="fixed inset-0 bg-slate-900/80 dark:bg-black/80 backdrop-blur-sm flex items-center justify-end">
+        <div style={{ zIndex: 99998 }} className="fixed inset-0 bg-slate-900/80 dark:bg-black/80 backdrop-blur-sm flex items-center justify-end">
           <div className="bg-white dark:bg-[#111] border-l border-slate-200 dark:border-white/10 shadow-2xl w-full max-w-sm h-full flex flex-col animate-in slide-in-from-right duration-300">
             <div className="p-5 border-b border-slate-200 dark:border-white/10 flex justify-between items-center bg-slate-50 dark:bg-[#0a0a0a]">
               <h2 className="text-lg font-bold">Lead Intelligence</h2>
@@ -642,7 +803,6 @@ export default function LeadForgeDashboard() {
                 )}
               </div>
 
-              {/* 🌟 NAYA: UNIFORM BOX LAYOUT */}
               <div className="space-y-3">
                 <div className="bg-slate-50 dark:bg-[#1a1a1a] p-4 rounded-xl border border-slate-100 dark:border-white/5">
                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Contact Email</p>
@@ -673,7 +833,10 @@ export default function LeadForgeDashboard() {
             </div>
             
             <div className="p-5 border-t border-slate-200 dark:border-white/10 space-y-2.5 bg-slate-50 dark:bg-[#0a0a0a]">
-              <button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-bold shadow-sm flex justify-center items-center gap-2 transition-transform hover:scale-[1.02] text-sm">
+              <button 
+                onClick={() => setIsManualScheduleModalOpen(true)}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-bold shadow-sm flex justify-center items-center gap-2 transition-transform hover:scale-[1.02] text-sm"
+              >
                 📅 Schedule Meeting
               </button>
               <button 
