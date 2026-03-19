@@ -1,11 +1,16 @@
 # Path: ai-engine/main.py
 import os
+import json
+import uuid
+import datetime
+import google.generativeai as genai 
+from pinecone import Pinecone # 🌟 NAYA: Added Pinecone Import
 from fastapi.staticfiles import StaticFiles
-from fastapi import FastAPI, Request, Form, Response, HTTPException, BackgroundTasks # 🌟 NAYA: Added HTTPException & BackgroundTasks
+from fastapi import FastAPI, Request, Form, Response, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
-from typing import Optional # 🌟 NAYA: Added Optional for LeadForge models
+from typing import Optional 
 
 # Import Local Modules
 from db import get_db_connection
@@ -86,7 +91,7 @@ app.add_middleware(
 # ==========================================
 # 📂 HOST STATIC FILES (FOR PDF DOWNLOADS)
 # ==========================================
-os.makedirs("static", exist_ok=True) # Agar folder nahi hai toh bana dega
+os.makedirs("static", exist_ok=True) 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
@@ -189,7 +194,6 @@ def get_live_appointments():
         """)
         appointments = cur.fetchall()
         
-        # Convert datetime to string for frontend visualization
         for appt in appointments:
             if appt['appointment_date']:
                 appt['time'] = appt['appointment_date'].strftime("%I:%M %p")
@@ -309,7 +313,6 @@ async def whatsapp_webhook(Body: str = Form(...), From: str = Form(...)):
         return Response(content=str(error_msg), media_type="application/xml")
     
 # 10. THE FINAL BOSS: VAPI.AI VOICE WEBHOOK
-import json
 
 @app.post("/api/vapi/webhook")
 async def vapi_webhook(request: Request):
@@ -373,7 +376,7 @@ class LeadCreate(BaseModel):
     pain_point: Optional[str] = None
     source: Optional[str] = "Website Form"
 
-# 🌟 NAYA: Pydantic Model for Editing a Lead
+# 🌟 Pydantic Model for Editing a Lead
 class LeadUpdate(BaseModel):
     name: str
     email: str
@@ -382,14 +385,13 @@ class LeadUpdate(BaseModel):
     budget: Optional[str] = None
     timeline: Optional[str] = None
     pain_point: Optional[str] = None
-    lead_status: Optional[str] = None # Jisse hum UI se Hot/Warm/Cold change kar sakein
+    lead_status: Optional[str] = None 
 
-# 2. Endpoint: Save Lead (Now with AI Enrichment & Auto-Email!)
+# 2. Endpoint: Save Lead
 @app.post("/api/leads/submit")
-def submit_lead(lead: LeadCreate, background_tasks: BackgroundTasks): # 🌟 BackgroundTasks inject kiya
+def submit_lead(lead: LeadCreate, background_tasks: BackgroundTasks): 
     print(f"📥 [LeadForge] New lead received from: {lead.name} ({lead.email})")
     
-    # 🌟 1. Call the AI Brain to score the lead first!
     lead_dict = lead.model_dump()
     ai_analysis = score_lead_with_ai(lead_dict)
     
@@ -415,7 +417,6 @@ def submit_lead(lead: LeadCreate, background_tasks: BackgroundTasks): # 🌟 Bac
         new_lead_id = cur.fetchone()['id']
         conn.commit()
 
-        # 🌟 3. FIRE THE EMAIL IN THE BACKGROUND (UI block nahi hoga!)
         background_tasks.add_task(
             send_confirmation_email,
             lead_name=lead.name,
@@ -449,7 +450,6 @@ def get_all_leads():
     
     try:
         cur = conn.cursor()
-        # 🌟 NAYA: "company_size" query mein add kiya hai taaki edit karte waqt data null na ho
         cur.execute("""
             SELECT id, name, email, company_name as company, company_size, ai_score as score, 
                    lead_status as status, budget, timeline, pain_point as pain, ai_reasoning 
@@ -464,7 +464,7 @@ def get_all_leads():
     finally:
         conn.close()
 
-# 🌟 NAYA: Endpoint to Update (Edit) a Lead
+# 4. Endpoint to Update (Edit) a Lead
 @app.put("/api/leads/{lead_id}")
 def update_lead(lead_id: int, lead: LeadUpdate):
     conn = get_db_connection()
@@ -503,3 +503,121 @@ def delete_lead(lead_id: int):
         raise HTTPException(status_code=400, detail="Error deleting lead")
     finally:
         conn.close()
+
+# ==========================================
+# 🤖 THE NEW CHATBOT BACKEND ENGINE (PINECONE RAG)
+# ==========================================
+
+# 🌟 INITIALIZE PINECONE IN API
+# Using a fallback just in case the env variable isn't loaded right away
+pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY", "DUMMY_KEY"))
+index = pc.Index("agenticforge-index")
+
+# --- 🌟 NAYA: Chat Message Models ---
+# Rename kiya hai SDRChatRequest taaki purane MediForge ChatRequest se conflict na ho
+class SDRChatRequest(BaseModel):
+    lead_id: int
+    message: str
+    history: list = [] # Abhi history simple rakhenge
+
+def get_query_embedding(text):
+    """User ke message ko vector mein badalna dhoondhne ke liye"""
+    result = genai.embed_content(
+        model="models/gemini-embedding-001",
+        content=text,
+        task_type="retrieval_query", # 🌟 Note: Ab hum "query" kar rahe hain
+    )
+    return result['embedding'][:768] # Same Matryoshka trick
+
+# --- 🌟 NAYA: The AI Booking Engine Endpoint ---
+@app.post("/api/chat/book")
+def chat_with_sdr(req: SDRChatRequest):
+    print(f"💬 [Chat Engine] Message from Lead {req.lead_id}: {req.message}")
+
+    # 1. Convert user's message to vector
+    try:
+        query_vector = get_query_embedding(req.message)
+    except Exception as e:
+        print(f"❌ [Embedding Error]: {e}")
+        return {"reply": "I'm having trouble understanding that right now. Could you rephrase?", "is_booked": False}
+
+    # 2. 🔍 RAG MAGIC: Search Pinecone for the 3 most relevant paragraphs
+    try:
+        search_results = index.query(
+            vector=query_vector,
+            top_k=3, 
+            include_metadata=True
+        )
+
+        # 3. Extract the text from Pinecone results
+        retrieved_context = ""
+        for match in search_results.get('matches', []):
+            retrieved_context += f"- Source ({match['metadata'].get('source', 'Unknown')}): {match['metadata'].get('text', '')}\n\n"
+
+        print(f"🧠 [RAG] Retrieved context from Pinecone. Building AI response...")
+    except Exception as e:
+        print(f"❌ [Pinecone Search Error]: {e}")
+        retrieved_context = "No specific company knowledge could be retrieved at this moment."
+
+    # 4. THE MASTER SYSTEM PROMPT
+    prompt = f"""
+    You are the elite Autonomous SDR for 'AgenticForge', an Enterprise AI Agency.
+    Your ONLY goal is to professionally answer the prospect's questions using the COMPANY KNOWLEDGE provided below, and smoothly pivot the conversation towards booking a 30-minute Architecture Review call.
+
+    --- COMPANY KNOWLEDGE RETRIEVED FROM DATABASE ---
+    {retrieved_context}
+    --- END OF KNOWLEDGE ---
+
+    Current Date & Time: {datetime.datetime.now().strftime("%Y-%m-%d %H:%M")}
+    User's Message: "{req.message}"
+
+    RULES:
+    1. ONLY use the information provided in the Company Knowledge above. If the answer is not there, politely say you don't have that specific detail but a senior engineer can answer it on the call. Do NOT invent facts.
+    2. Be concise, professional, and confident. No long essays.
+    3. If the user HAS provided a clear date and time (e.g., "Thursday at 3 PM", "Tomorrow morning"), YOU MUST OUTPUT STRICT JSON ONLY formatted exactly like this:
+    {{
+        "action": "book_meeting",
+        "date": "YYYY-MM-DD",
+        "time": "HH:MM AM/PM"
+    }}
+    4. If they haven't provided a time yet, gently ask for one. Do NOT output JSON unless a specific time is agreed upon.
+    """
+    
+    try:
+        model = genai.GenerativeModel('gemini-2.5-flash')
+        response = model.generate_content(prompt)
+        ai_reply = response.text.strip()
+        
+        # 🌟 Check if AI decided to book the meeting
+        if ai_reply.startswith("{") and "book_meeting" in ai_reply:
+            booking_data = json.loads(ai_reply)
+            
+            # Generate Meet Link
+            meet_id = f"{uuid.uuid4().hex[:3]}-{uuid.uuid4().hex[:4]}-{uuid.uuid4().hex[:3]}"
+            meet_link = f"https://meet.google.com/{meet_id}"
+            
+            # 🌟 TODO RESOLVED: Save to Database Neon DB insert query
+            conn = get_db_connection()
+            if conn:
+                try:
+                    cur = conn.cursor()
+                    cur.execute("""
+                        INSERT INTO meetings (lead_id, meeting_date, meeting_time, meet_link, notes)
+                        VALUES (%s, %s, %s, %s, %s)
+                    """, (req.lead_id, booking_data['date'], booking_data['time'], meet_link, "Scheduled via AI SDR Chatbot"))
+                    conn.commit()
+                except Exception as db_err:
+                    print(f"❌ [DB Insert Error]: {db_err}")
+                finally:
+                    conn.close()
+            
+            final_response = f"Perfect! Your architecture review is locked in for {booking_data['date']} at {booking_data['time']}. I will send a calendar invite to your email shortly with the link: {meet_link}"
+            
+            return {"reply": final_response, "is_booked": True, "meet_link": meet_link}
+        
+        else:
+            return {"reply": ai_reply, "is_booked": False}
+            
+    except Exception as e:
+        print(f"❌ [Chat Engine] Error: {e}")
+        return {"reply": "I'm syncing with my knowledge base. Could you repeat that?", "is_booked": False}
