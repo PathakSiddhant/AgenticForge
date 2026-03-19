@@ -143,7 +143,7 @@ export default function AIBookingPage() {
           {/* Typing Indicator */}
           {isTyping && (
             <div className="flex w-full justify-start">
-              <div className="bg-white dark:bg-[#1a1a1a] border border-slate-200 dark:border-white/5 p-4 rounded-2xl rounded-tl-sm flex gap-1.5 items-center h-[52px] shadow-sm">
+              <div className="bg-white dark:bg-[#1a1a1a] border border-slate-200 dark:border-white/5 p-4 rounded-2xl rounded-tl-sm flex gap-1.5 items-center h-13 shadow-sm">
                 <span className="w-1.5 h-1.5 bg-slate-400 dark:bg-slate-500 rounded-full animate-bounce"></span>
                 <span className="w-1.5 h-1.5 bg-slate-400 dark:bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></span>
                 <span className="w-1.5 h-1.5 bg-slate-400 dark:bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></span>
