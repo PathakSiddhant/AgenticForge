@@ -1,0 +1,130 @@
+AgenticForge: Technical Architecture & Security FAQ
+
+DOCUMENT CLASSIFICATION: EXTERNAL / TECHNICAL PROSPECT REVIEW
+AUTHOR: Chief Technology Officer (CTO), AgenticForge
+TARGET AUDIENCE: CTOs, VPs of Engineering, CISOs, IT Directors
+LAST UPDATED: Q1 2026
+
+1. Letter from the CTO
+
+Welcome to the technical nucleus of AgenticForge. If you are reading this document, you are likely a technical stakeholder tasked with evaluating whether our autonomous agents are robust enough to integrate with your enterprise systems, and secure enough to handle your proprietary data.
+
+The short answer is: Yes.
+
+The enterprise AI landscape is currently flooded with fragile, consumer-grade wrappers built on transient technologies. AgenticForge takes a fundamentally different approach. We do not build "chatbots." We engineer asynchronous, event-driven, multi-agent systems. We treat Large Language Models (LLMs) not as the entire application, but simply as the reasoning engine within a much larger, deterministic software architecture.
+
+This FAQ document is designed to provide complete transparency into our technology stack, our integration methodologies, our strict security protocols, and exactly how we eliminate the risk of AI hallucinations. We invite your rigorous technical scrutiny.
+
+2. Core Architecture & Tech Stack
+
+Q: What is the core technology stack powering AgenticForge?
+
+Our architecture is designed for high availability, low latency, and absolute horizontal scalability. We favor proven, enterprise-grade frameworks over experimental beta libraries.
+
+Backend Services: Our core middleware and agent orchestration layers are written in Python, utilizing FastAPI for high-performance, asynchronous REST API endpoints. We leverage Pydantic for strict data validation and type hinting, ensuring that all data passed to and from the LLMs is mathematically structured and verified.
+
+Frontend & Dashboards: Client-facing analytics, approval dashboards (Human-in-the-Loop interfaces), and system administration panels are built using Next.js and React, deployed on Vercel for edge-network proximity and sub-second load times.
+
+Vector Database (Memory): We utilize Pinecone as our primary vector database for Retrieval-Augmented Generation (RAG). Pinecone provides the sub-50ms vector search latencies required for real-time conversational agents.
+
+Workflow Orchestration: For complex, multi-step integrations and stateful logic routing, we utilize self-hosted, enterprise-grade instances of n8n. This allows us to build deterministic logic trees that trigger our non-deterministic LLM agents.
+
+Q: Are you locked into a specific foundation model like OpenAI?
+
+Absolutely not. We are strictly model-agnostic. The AI landscape shifts rapidly; the best model today may be obsolete in three months.
+
+Our architecture abstracts the LLM layer. We use a unified routing gateway that allows us to hot-swap models without changing your core application logic. While we frequently utilize GPT-4o for complex reasoning and Claude 3.5 Sonnet for heavy coding/text generation tasks, we can easily route to Google Gemini, or even self-hosted open-source models (like Llama 3 or Mixtral 8x7B via vLLM) if you have strict data sovereignty requirements that forbid cloud APIs. We route based on the specific task's requirement for speed, cost, or reasoning depth.
+
+3. CRM Integrations & Interoperability
+
+Q: Which CRMs do you support natively, and how do you handle integrations?
+
+We integrate deeply with all major enterprise CRMs, specifically focusing on Salesforce, HubSpot, and GoHighLevel (GHL).
+
+However, we do not rely on fragile, out-of-the-box UI plugins. All integrations are handled programmatically via custom REST APIs.
+
+Salesforce: We utilize the Salesforce REST API via connected apps using OAuth 2.0 JWT bearer token flows for server-to-server integration. This allows our agents to execute SOQL queries, update standard/custom objects, and trigger Apex classes autonomously.
+
+HubSpot: We use HubSpot's Private App access tokens to execute batch updates, manage associations between Contacts and Deals, and ingest timeline events directly from our agentic workflows.
+
+GoHighLevel: We interface heavily with GHL’s v2 API to manage sub-accounts, trigger specific marketing snapshots, and read/write to custom pipeline stages.
+
+Q: How do you handle API rate limits and bidirectional syncing?
+
+Because our agents can execute thousands of tasks a minute, naïve integrations will instantly trigger CRM rate limits (e.g., Salesforce's concurrent API request limits).
+
+To prevent this, our Python middleware implements robust rate-limiting algorithms (Token Bucket/Leaky Bucket) and exponential backoff retry logic. For high-volume data ingestion, we utilize bulk API endpoints rather than single-record REST calls.
+
+For bidirectional syncing (ensuring the CRM is the source of truth), we utilize webhook subscriptions. If a human AE updates a deal stage in HubSpot, HubSpot fires a webhook to our FastAPI endpoint, which immediately updates the specific agent's short-term memory cache, ensuring the agent doesn't contradict the human.
+
+4. Hallucination Prevention & RAG Architecture
+
+Q: How does your RAG architecture actually prevent AI hallucinations?
+
+"Hallucinations" occur when an LLM is asked a question it does not know, prompting it to statistically guess an answer based on its underlying training data. In an enterprise environment, a hallucinated pricing tier or feature is catastrophic.
+
+We solve this through a mathematically strict implementation of Retrieval-Augmented Generation (RAG) combined with aggressive system prompting.
+
+The Workflow:
+
+Vectorization: We ingest your proprietary data (SOPs, product sheets) and process it using state-of-the-art embedding models (e.g., text-embedding-3-large). We split the text into semantically overlapping chunks to preserve context and store them in Pinecone.
+
+Semantic Retrieval: When a user queries the agent, we do not send the query directly to the LLM. Instead, we convert the user's query into a vector and perform an Approximate Nearest Neighbor (ANN) search in Pinecone to retrieve the top-K most relevant document chunks.
+
+Context Injection: We inject only those retrieved chunks into a highly restrictive system prompt.
+
+The "Grounding" Guardrail: The LLM is instructed via system prompt: "You are an enterprise support agent. You must answer the user's query using strictly the 'Context Block' provided below. If the answer cannot be explicitly derived from the context, you must reply 'I do not have access to that information' and immediately trigger the human-escalation webhook. You are mathematically forbidden from generating external facts."
+
+By forcing the LLM to act as a summarizer of provided context rather than a generator of novel thought, we effectively reduce hallucination rates to near absolute zero.
+
+Q: How do you handle document updates and stale data?
+
+Vector databases are only as good as their latest sync. We build automated data pipelines using n8n and Python scripts that monitor your internal knowledge bases (Confluence, Google Drive, Notion). When a document is updated, a webhook triggers our indexing service to instantly re-embed the new document, delete the old vector ID in Pinecone, and upsert the fresh data. Your agents are always operating on real-time company knowledge.
+
+5. Security Protocols & Data Privacy
+
+Q: What are your security protocols for handling sensitive enterprise data?
+
+Security is not an afterthought; it is the foundational layer of our architecture. We understand that we are processing your most valuable asset: your proprietary data and your customer communications.
+
+Data in Transit and at Rest: All data transmitted between your systems, our middleware, and the LLM APIs is encrypted in transit using TLS 1.3. All data stored within our vector databases and internal caches is encrypted at rest using AES-256 encryption.
+
+Isolated Vector Namespaces: We utilize strict multi-tenancy controls. Your data is never mixed with another client's data. We use dedicated Pinecone indexes or highly isolated namespaces to guarantee logical separation of vectors.
+
+SOC2 Compliance: Our core infrastructure providers (AWS/GCP, Pinecone, Vercel) are fully SOC2 Type II compliant. AgenticForge operates under strict internal access controls, audit logging, and principle-of-least-privilege engineering practices aligned with SOC2 frameworks.
+
+Q: Do LLM providers use our data to train their models?
+
+No. This is a critical distinction. When a consumer uses the public ChatGPT interface, OpenAI may use that data for model training.
+
+We do not use public consumer interfaces. We utilize Enterprise API Endpoints. We hold formal Data Processing Agreements (DPAs) and Zero Data Retention agreements with our LLM providers (OpenAI, Anthropic). This legally binds them to process the API request, return the generation, and immediately purge the payload from their servers. Your proprietary prompts, customer data, and RAG context are never used to train foundational models.
+
+Q: How do you handle Personally Identifiable Information (PII) or HIPAA compliance?
+
+For clients in healthcare, finance, or highly regulated SaaS, we implement aggressive PII redaction pipelines before data ever hits an external LLM API.
+
+We utilize specialized NLP models (such as Microsoft Presidio) to scan incoming text for SSNs, credit card numbers, protected health information (PHI), and sensitive names. The pipeline masks this data (e.g., replacing a name with [REDACTED_PATIENT_NAME_1]) before it is sent to the LLM for reasoning. When the LLM generates a response, our middleware maps the token back to the original PII locally before sending it to the end-user. This ensures high-level reasoning without ever exposing sensitive strings to third-party APIs.
+
+6. Observability & Edge-Case Management
+
+Q: How do you monitor agent performance and debug logic failures?
+
+You cannot manage what you cannot measure. Because AI agents are non-deterministic, standard application monitoring is insufficient.
+
+We implement comprehensive LLM Observability using tools like LangSmith or Datadog LLM Observability.
+
+Trace Logging: Every single agentic step—from the user's input, to the vector search latency, to the retrieved context, to the exact prompt sent, to the token usage, to the final output—is logged and traced.
+
+Evaluation Metrics: We track latency, token cost, and user sentiment score in real-time.
+
+Alerting: If an agent encounters a series of unhandled exceptions from an API, or if the latency of a response exceeds 3000ms, our engineering team receives immediate PagerDuty alerts.
+
+Q: What happens when the AI gets confused or encounters an edge case?
+
+We engineer for failure. We know that prospects will throw illogical, highly complex edge cases at our agents.
+
+We implement Deterministic Fallback Routing. Our agents are programmed with explicit "confidence thresholds." If an agent analyzes an inbound email and its confidence score for the correct next action drops below 85%, it halts autonomous execution. It automatically routes the entire context thread to a designated Slack channel or Zendesk queue, tagging a human operator. The human can read the context, click "Approve," "Edit," or take over entirely.
+
+AgenticForge systems are not designed to blindly guess; they are designed to autonomously execute the 90% of routine workflows flawlessly, and seamlessly escalate the complex 10% to your human experts.
+
+We look forward to diving into the technical specifics of your environment during our Architecture Review.
