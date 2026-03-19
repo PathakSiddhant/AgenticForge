@@ -96,6 +96,12 @@ app.add_middleware(
 os.makedirs("static", exist_ok=True) 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+# 🌟 LINK GENERATOR (Moved up so all endpoints can use it)
+def generate_meet_link():
+    """Generates a realistic Google Meet link format (abc-defg-hij)"""
+    def r(n): return ''.join(random.choices(string.ascii_lowercase, k=n))
+    return f"https://meet.google.com/{r(3)}-{r(4)}-{r(3)}"
+
 
 # ==========================================
 # 🔗 MICRO-AGENTS ROUTING
@@ -388,6 +394,12 @@ class LeadUpdate(BaseModel):
     pain_point: Optional[str] = None
     lead_status: Optional[str] = None 
 
+# 🌟 NAYA: Manual Meeting Request Model
+class ManualMeetingRequest(BaseModel):
+    lead_id: int
+    date: str
+    time: str
+
 # 2. Endpoint: Save Lead
 @app.post("/api/leads/submit")
 def submit_lead(lead: LeadCreate, background_tasks: BackgroundTasks): 
@@ -506,6 +518,99 @@ def delete_lead(lead_id: int):
     finally:
         conn.close()
 
+# 🌟 NAYA: 1. ENDPOINT: Manual Booking from Dashboard
+@app.post("/api/leads/schedule-manual")
+def schedule_manual_meeting(req: ManualMeetingRequest):
+    meet_link = generate_meet_link() 
+    
+    conn = get_db_connection()
+    if not conn: raise HTTPException(status_code=500, detail="DB Error")
+    try:
+        cur = conn.cursor()
+        
+        # Lead ki details nikal rahe hain email bhejne ke liye
+        cur.execute("SELECT name, email FROM leads WHERE id = %s", (req.lead_id,))
+        lead_data = cur.fetchone()
+        if not lead_data: return {"success": False, "message": "Lead not found"}
+        
+        lead_name = lead_data.get('name', '') if isinstance(lead_data, dict) else lead_data[0]
+        lead_email = lead_data.get('email', '') if isinstance(lead_data, dict) else lead_data[1]
+
+        # Meetings table mein entry
+        cur.execute("""
+            INSERT INTO meetings (lead_id, meeting_date, meeting_time, meet_link, notes)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (req.lead_id, req.date, req.time, meet_link, "Manually Scheduled from Dashboard"))
+        
+        # Leads table mein status update (taki wo Kanban pipeline se hat jaye)
+        cur.execute("UPDATE leads SET lead_status = 'Meeting Scheduled' WHERE id = %s", (req.lead_id,))
+        conn.commit()
+
+        # 🌟 SAME OFFICIAL EMAIL BHEJ RAHE HAIN
+        send_meeting_confirmation_email(lead_name, lead_email, req.date, req.time, meet_link)
+        
+        return {"success": True, "message": "Meeting Scheduled & Email Sent!"}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        conn.close()
+
+# 🌟 UPDATED: Fetch Scheduled Meetings for Dashboard Calendar
+@app.get("/api/leads/meetings")
+def get_lead_meetings():
+    conn = get_db_connection()
+    if not conn: return []
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT m.id as meeting_id, m.lead_id, l.name, l.email, l.company_name, 
+                   l.company_size, l.budget, l.timeline, l.pain_point, l.ai_score,
+                   m.meeting_date, m.meeting_time, m.meet_link 
+            FROM meetings m
+            JOIN leads l ON m.lead_id = l.id
+            ORDER BY m.meeting_date ASC, m.meeting_time ASC
+        """)
+        
+        meetings_data = cur.fetchall()
+        result = []
+        
+        for row in meetings_data:
+            # 🌟 MAGIC FIX: Agar DB directly dictionary bhej raha hai
+            if isinstance(row, dict):
+                result.append(row)
+            # Agar DB tuple bhej raha hai, tab zip karo
+            else:
+                columns = [desc[0] for desc in cur.description]
+                result.append(dict(zip(columns, row)))
+                
+        return result
+        
+    except Exception as e:
+        print(f"Error fetching meetings: {e}")
+        return []
+    finally:
+        conn.close()
+
+# 🌟 NAYA: 3. ENDPOINT: Mark as Complete (Dono Table se Delete!)
+@app.delete("/api/leads/meetings/{lead_id}/complete")
+def complete_meeting(lead_id: int):
+    conn = get_db_connection()
+    if not conn: raise HTTPException(status_code=500, detail="DB Error")
+    try:
+        cur = conn.cursor()
+        # Meetings table se hataya
+        cur.execute("DELETE FROM meetings WHERE lead_id = %s", (lead_id,))
+        # Leads table se hataya (Jaisa tune bola, pura kachra saaf)
+        cur.execute("DELETE FROM leads WHERE id = %s", (lead_id,))
+        conn.commit()
+        return {"success": True, "message": "Lead & Meeting removed successfully."}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        conn.close()
+
 
 # ==========================================
 # 🤖 THE NEW CHATBOT BACKEND ENGINE (SELF-AWARE RAG)
@@ -527,12 +632,6 @@ def get_query_embedding(text):
         task_type="retrieval_query", 
     )
     return result['embedding'][:768] 
-
-# 🌟 NAYA: Link Generator Function
-def generate_meet_link():
-    """Generates a realistic Google Meet link format (abc-defg-hij)"""
-    def r(n): return ''.join(random.choices(string.ascii_lowercase, k=n))
-    return f"https://meet.google.com/{r(3)}-{r(4)}-{r(3)}"
 
 
 @app.post("/api/chat/book")
