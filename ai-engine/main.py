@@ -3,8 +3,10 @@ import os
 import json
 import uuid
 import datetime
+import random 
+import string 
 import google.generativeai as genai 
-from pinecone import Pinecone # 🌟 NAYA: Added Pinecone Import
+from pinecone import Pinecone 
 from fastapi.staticfiles import StaticFiles
 from fastapi import FastAPI, Request, Form, Response, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
@@ -72,7 +74,7 @@ from twilio.twiml.messaging_response import MessagingResponse
 
 # 🌟 ENTERPRISE WORKFLOW (LEADFORGE AI BRAIN)
 from agents.lead_scorer import score_lead_with_ai
-from services.email_sender import send_confirmation_email 
+from services.email_sender import send_confirmation_email, send_meeting_confirmation_email
 
 
 # ==========================================
@@ -376,7 +378,6 @@ class LeadCreate(BaseModel):
     pain_point: Optional[str] = None
     source: Optional[str] = "Website Form"
 
-# 🌟 Pydantic Model for Editing a Lead
 class LeadUpdate(BaseModel):
     name: str
     email: str
@@ -419,6 +420,7 @@ def submit_lead(lead: LeadCreate, background_tasks: BackgroundTasks):
 
         background_tasks.add_task(
             send_confirmation_email,
+            lead_id=new_lead_id, 
             lead_name=lead.name,
             lead_email=lead.email,
             ai_status=status,
@@ -504,83 +506,126 @@ def delete_lead(lead_id: int):
     finally:
         conn.close()
 
+
 # ==========================================
-# 🤖 THE NEW CHATBOT BACKEND ENGINE (PINECONE RAG)
+# 🤖 THE NEW CHATBOT BACKEND ENGINE (SELF-AWARE RAG)
 # ==========================================
 
 # 🌟 INITIALIZE PINECONE IN API
-# Using a fallback just in case the env variable isn't loaded right away
 pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY", "DUMMY_KEY"))
 index = pc.Index("agenticforge-index")
 
-# --- 🌟 NAYA: Chat Message Models ---
-# Rename kiya hai SDRChatRequest taaki purane MediForge ChatRequest se conflict na ho
 class SDRChatRequest(BaseModel):
     lead_id: int
     message: str
-    history: list = [] # Abhi history simple rakhenge
+    history: list = [] 
 
 def get_query_embedding(text):
-    """User ke message ko vector mein badalna dhoondhne ke liye"""
     result = genai.embed_content(
         model="models/gemini-embedding-001",
         content=text,
-        task_type="retrieval_query", # 🌟 Note: Ab hum "query" kar rahe hain
+        task_type="retrieval_query", 
     )
-    return result['embedding'][:768] # Same Matryoshka trick
+    return result['embedding'][:768] 
 
-# --- 🌟 NAYA: The AI Booking Engine Endpoint ---
+# 🌟 NAYA: Link Generator Function
+def generate_meet_link():
+    """Generates a realistic Google Meet link format (abc-defg-hij)"""
+    def r(n): return ''.join(random.choices(string.ascii_lowercase, k=n))
+    return f"https://meet.google.com/{r(3)}-{r(4)}-{r(3)}"
+
+
 @app.post("/api/chat/book")
 def chat_with_sdr(req: SDRChatRequest):
     print(f"💬 [Chat Engine] Message from Lead {req.lead_id}: {req.message}")
 
-    # 1. Convert user's message to vector
+    # 1. DB Context Setup
+    lead_name, lead_email, lead_context = "User", "", "No specific needs."
+    existing_meeting = None
+    booked_times_str = "No existing meetings."
+    
+    try:
+        conn = get_db_connection()
+        if conn:
+            cur = conn.cursor()
+            
+            # Lead Info (Safely handling DictCursor)
+            cur.execute("SELECT name, email, pain_point FROM leads WHERE id = %s", (req.lead_id,))
+            lead_data = cur.fetchone()
+            if lead_data:
+                lead_name = lead_data.get('name', '') if isinstance(lead_data, dict) else lead_data[0]
+                lead_email = lead_data.get('email', '') if isinstance(lead_data, dict) else lead_data[1]
+                needs = lead_data.get('pain_point', '') if isinstance(lead_data, dict) else lead_data[2]
+                lead_context = f"Name: {lead_name}\nSpecific Needs: {needs}"
+
+            # 🌟 NAYA: Check if THIS specific lead already has a meeting booked
+            cur.execute("SELECT meeting_date, meeting_time, meet_link FROM meetings WHERE lead_id = %s AND meeting_date >= CURRENT_DATE", (req.lead_id,))
+            existing_meeting = cur.fetchone()
+
+            # All booked meetings (for conflict check)
+            cur.execute("SELECT meeting_date, meeting_time FROM meetings WHERE meeting_date >= CURRENT_DATE")
+            booked_meetings = cur.fetchall()
+            if booked_meetings:
+                times = []
+                for m in booked_meetings:
+                    m_date = m.get('meeting_date') if isinstance(m, dict) else m[0]
+                    m_time = m.get('meeting_time') if isinstance(m, dict) else m[1]
+                    times.append(f"{m_date} at {m_time}")
+                booked_times_str = ", ".join(times)
+                
+            conn.close()
+    except Exception as e:
+        print(f"⚠️ DB Context Error: {e}")
+
+    # 2. RAG Search
     try:
         query_vector = get_query_embedding(req.message)
-    except Exception as e:
-        print(f"❌ [Embedding Error]: {e}")
-        return {"reply": "I'm having trouble understanding that right now. Could you rephrase?", "is_booked": False}
-
-    # 2. 🔍 RAG MAGIC: Search Pinecone for the 3 most relevant paragraphs
-    try:
-        search_results = index.query(
-            vector=query_vector,
-            top_k=3, 
-            include_metadata=True
-        )
-
-        # 3. Extract the text from Pinecone results
-        retrieved_context = ""
-        for match in search_results.get('matches', []):
-            retrieved_context += f"- Source ({match['metadata'].get('source', 'Unknown')}): {match['metadata'].get('text', '')}\n\n"
-
-        print(f"🧠 [RAG] Retrieved context from Pinecone. Building AI response...")
+        search_results = index.query(vector=query_vector, top_k=2, include_metadata=True)
+        retrieved_context = "\n".join([f"- {m['metadata'].get('text', '')}" for m in search_results.get('matches', [])])
     except Exception as e:
         print(f"❌ [Pinecone Search Error]: {e}")
         retrieved_context = "No specific company knowledge could be retrieved at this moment."
 
-    # 4. THE MASTER SYSTEM PROMPT
+    # 🌟 3. DYNAMIC PROMPT (The "Memory" & "Reschedule" Fix)
+    if existing_meeting:
+        ex_date = existing_meeting.get('meeting_date') if isinstance(existing_meeting, dict) else existing_meeting[0]
+        ex_time = existing_meeting.get('meeting_time') if isinstance(existing_meeting, dict) else existing_meeting[1]
+        ex_link = existing_meeting.get('meet_link') if isinstance(existing_meeting, dict) else existing_meeting[2]
+
+        meeting_status_prompt = f"""
+        CRITICAL STATUS: You have ALREADY scheduled a meeting with this user for {ex_date} at {ex_time}.
+        The meeting link is {ex_link}.
+        ALREADY BOOKED TIMES: {booked_times_str} (Do NOT allow rescheduling at these times).
+        
+        RULES:
+        1. DO NOT ask them to book a NEW call. Acknowledge their existing meeting.
+        2. IF the user asks to RESCHEDULE, ask them for a new date and time.
+        3. IF the user provides a CLEAR NEW DATE AND TIME for rescheduling, YOU MUST OUTPUT STRICT JSON ONLY formatted exactly like this:
+        {{
+            "action": "reschedule_meeting",
+            "date": "YYYY-MM-DD",
+            "time": "HH:MM AM/PM"
+        }}
+        4. If just chatting, answer politely using the knowledge base.
+        """
+    else:
+        meeting_status_prompt = f"""
+        CRITICAL STATUS: No meeting scheduled yet. Your ultimate goal is to smoothly pivot the conversation towards booking a 30-minute Architecture Review call.
+        ALREADY BOOKED TIMES: {booked_times_str} (Do NOT allow booking at these times).
+        RULE: If the user provides a clear date and time, YOU MUST OUTPUT STRICT JSON ONLY: {{"action": "book_meeting", "date": "YYYY-MM-DD", "time": "HH:MM AM/PM"}}
+        """
+
     prompt = f"""
-    You are the elite Autonomous SDR for 'AgenticForge', an Enterprise AI Agency.
-    Your ONLY goal is to professionally answer the prospect's questions using the COMPANY KNOWLEDGE provided below, and smoothly pivot the conversation towards booking a 30-minute Architecture Review call.
-
-    --- COMPANY KNOWLEDGE RETRIEVED FROM DATABASE ---
+    You are the elite Autonomous SDR for AgenticForge. 
+    --- LEAD CONTEXT ---
+    {lead_context}
+    --- KNOWLEDGE BASE ---
     {retrieved_context}
-    --- END OF KNOWLEDGE ---
-
-    Current Date & Time: {datetime.datetime.now().strftime("%Y-%m-%d %H:%M")}
+    
+    Current Date: {datetime.datetime.now().strftime("%Y-%m-%d")}
+    {meeting_status_prompt}
+    
     User's Message: "{req.message}"
-
-    RULES:
-    1. ONLY use the information provided in the Company Knowledge above. If the answer is not there, politely say you don't have that specific detail but a senior engineer can answer it on the call. Do NOT invent facts.
-    2. Be concise, professional, and confident. No long essays.
-    3. If the user HAS provided a clear date and time (e.g., "Thursday at 3 PM", "Tomorrow morning"), YOU MUST OUTPUT STRICT JSON ONLY formatted exactly like this:
-    {{
-        "action": "book_meeting",
-        "date": "YYYY-MM-DD",
-        "time": "HH:MM AM/PM"
-    }}
-    4. If they haven't provided a time yet, gently ask for one. Do NOT output JSON unless a specific time is agreed upon.
     """
     
     try:
@@ -588,36 +633,62 @@ def chat_with_sdr(req: SDRChatRequest):
         response = model.generate_content(prompt)
         ai_reply = response.text.strip()
         
-        # 🌟 Check if AI decided to book the meeting
-        if ai_reply.startswith("{") and "book_meeting" in ai_reply:
+        # Clean JSON backticks
+        if ai_reply.startswith("```json"):
+            ai_reply = ai_reply.replace("```json", "").replace("```", "").strip()
+        elif ai_reply.startswith("```"):
+            ai_reply = ai_reply.replace("```", "").strip()
+        
+        # 🌟 4A. NEW BOOKING LOGIC
+        if ai_reply.startswith("{") and "book_meeting" in ai_reply and not existing_meeting:
             booking_data = json.loads(ai_reply)
+            meet_link = generate_meet_link()
             
-            # Generate Meet Link
-            meet_id = f"{uuid.uuid4().hex[:3]}-{uuid.uuid4().hex[:4]}-{uuid.uuid4().hex[:3]}"
-            meet_link = f"https://meet.google.com/{meet_id}"
-            
-            # 🌟 TODO RESOLVED: Save to Database Neon DB insert query
             conn = get_db_connection()
             if conn:
-                try:
-                    cur = conn.cursor()
-                    cur.execute("""
-                        INSERT INTO meetings (lead_id, meeting_date, meeting_time, meet_link, notes)
-                        VALUES (%s, %s, %s, %s, %s)
-                    """, (req.lead_id, booking_data['date'], booking_data['time'], meet_link, "Scheduled via AI SDR Chatbot"))
-                    conn.commit()
-                except Exception as db_err:
-                    print(f"❌ [DB Insert Error]: {db_err}")
-                finally:
-                    conn.close()
+                cur = conn.cursor()
+                cur.execute("""
+                    INSERT INTO meetings (lead_id, meeting_date, meeting_time, meet_link, notes)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (req.lead_id, booking_data['date'], booking_data['time'], meet_link, "AI Scheduled"))
+                
+                cur.execute("UPDATE leads SET lead_status = 'Meeting Scheduled' WHERE id = %s", (req.lead_id,))
+                conn.commit()
+                conn.close()
             
-            final_response = f"Perfect! Your architecture review is locked in for {booking_data['date']} at {booking_data['time']}. I will send a calendar invite to your email shortly with the link: {meet_link}"
+            send_meeting_confirmation_email(lead_name, lead_email, booking_data['date'], booking_data['time'], meet_link)
             
+            final_response = f"Perfect! Your architecture review is locked in for {booking_data['date']} at {booking_data['time']}. I've sent a calendar invite to {lead_email}."
             return {"reply": final_response, "is_booked": True, "meet_link": meet_link}
-        
+
+        # 🌟 4B. RESCHEDULE LOGIC (Naya Code)
+        elif ai_reply.startswith("{") and "reschedule_meeting" in ai_reply and existing_meeting:
+            booking_data = json.loads(ai_reply)
+            
+            ex_link = existing_meeting.get('meet_link') if isinstance(existing_meeting, dict) else existing_meeting[2]
+            meet_link = ex_link 
+            
+            conn = get_db_connection()
+            if conn:
+                cur = conn.cursor()
+                # 🌟 Update the existing meeting instead of creating a new one!
+                cur.execute("""
+                    UPDATE meetings 
+                    SET meeting_date = %s, meeting_time = %s 
+                    WHERE lead_id = %s
+                """, (booking_data['date'], booking_data['time'], req.lead_id))
+                conn.commit()
+                conn.close()
+            
+            # Send email again
+            send_meeting_confirmation_email(lead_name, lead_email, booking_data['date'], booking_data['time'], meet_link)
+            
+            final_response = f"Got it, {lead_name}. I have successfully rescheduled our meeting to {booking_data['date']} at {booking_data['time']}. I've sent an updated invite to your email."
+            return {"reply": final_response, "is_booked": True, "meet_link": meet_link}
+
         else:
             return {"reply": ai_reply, "is_booked": False}
             
     except Exception as e:
-        print(f"❌ [Chat Engine] Error: {e}")
-        return {"reply": "I'm syncing with my knowledge base. Could you repeat that?", "is_booked": False}
+        print(f"❌ Error: {e}")
+        return {"reply": "Sorry, I had a quick glitch. What were we discussing?", "is_booked": False}
