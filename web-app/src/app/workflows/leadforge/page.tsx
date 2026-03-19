@@ -48,7 +48,7 @@ export default function LeadForgeDashboard() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   
-  // 🌟 NAYA: State for detailed meeting panel
+  // 🌟 State for detailed meeting panel
   const [selectedMeetingDetail, setSelectedMeetingDetail] = useState<ScheduledMeeting | null>(null);
   const [selectedDateMeetings, setSelectedDateMeetings] = useState<{dateStr: string, meetings: ScheduledMeeting[]} | null>(null);
   
@@ -87,8 +87,33 @@ export default function LeadForgeDashboard() {
     }
   };
 
+  // Initial Load
   useEffect(() => {
     fetchData();
+  }, []);
+
+  // 🌟 MAGIC FIX: Auto-Sync (Polling) every 5 seconds without showing loading spinner
+  useEffect(() => {
+    const fetchSilent = async () => {
+      try {
+        const [leadsRes, meetsRes] = await Promise.all([
+          fetch("http://127.0.0.1:8000/api/leads"),
+          fetch("http://127.0.0.1:8000/api/leads/meetings")
+        ]);
+        if (leadsRes.ok) {
+          const data = await leadsRes.json();
+          setLeads(data.filter((l: Lead) => l.status !== "Meeting Scheduled"));
+        }
+        if (meetsRes.ok) {
+          setMeetings(await meetsRes.json());
+        }
+      } catch (error) {
+        // Silently fail if server is temporarily unreachable
+      }
+    };
+
+    const intervalId = setInterval(fetchSilent, 5000);
+    return () => clearInterval(intervalId); // Cleanup on unmount
   }, []);
 
   const hotCount = leads.filter(l => l.status === "Hot").length;
@@ -286,6 +311,14 @@ export default function LeadForgeDashboard() {
         </div>
         
         <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+          {/* 🌟 NAYA: In-Page Refresh Button */}
+          <button 
+            onClick={() => { setIsLoadingLeads(true); fetchData(); }}
+            className="bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 px-3 py-2 rounded-lg text-sm font-bold transition-colors flex items-center gap-2 border border-slate-200 dark:border-white/10 shadow-sm"
+          >
+            <span className={isLoadingLeads ? "animate-spin" : ""}>🔄</span> Sync
+          </button>
+
           <div className="relative w-full sm:w-64">
             <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 text-sm">🔍</span>
             <input 
