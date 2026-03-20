@@ -251,7 +251,7 @@ export default function LeadForgeDashboard() {
       });
       if (res.ok) {
         setSelectedDateMeetings(null);
-        setSelectedMeetingDetail(null); // Side panel bhi band karo if active
+        setSelectedMeetingDetail(null); 
         fetchData();
       }
     } catch (error) {
@@ -273,6 +273,11 @@ export default function LeadForgeDashboard() {
         ? filteredMeetings 
         : meetings.filter(m => m.meeting_date === currentDatePickerValue);
 
+  // 🌟 ANALYTICS LOGIC 
+  const totalActiveLeads = leads.length;
+  const scheduledMeetingsCount = meetings.length;
+  const totalEver = totalActiveLeads + scheduledMeetingsCount;
+  const conversionRate = totalEver > 0 ? Math.round((scheduledMeetingsCount / totalEver) * 100) : 0;
 
   const LeadCard = ({ lead }: { lead: Lead }) => (
     <div onClick={() => setSelectedLead(lead)} className="bg-white dark:bg-[#111] border border-slate-200 dark:border-white/10 rounded-xl p-4 shadow-sm hover:shadow-md hover:border-blue-500/50 transition-all cursor-pointer group flex flex-col justify-between">
@@ -311,10 +316,9 @@ export default function LeadForgeDashboard() {
         </div>
         
         <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
-          {/* 🌟 NAYA: In-Page Refresh Button */}
           <button 
             onClick={() => { setIsLoadingLeads(true); fetchData(); }}
-            className="bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 px-3 py-2 rounded-lg text-sm font-bold transition-colors flex items-center gap-2 border border-slate-200 dark:border-white/10 shadow-sm"
+            className="bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 px-3 py-2 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 border border-slate-200 dark:border-white/10 shadow-sm"
           >
             <span className={isLoadingLeads ? "animate-spin" : ""}>🔄</span> Sync
           </button>
@@ -336,6 +340,58 @@ export default function LeadForgeDashboard() {
             + Simulate Lead
           </button>
         </div>
+      </div>
+
+      {/* 🌟 ANALYTICS DASHBOARD 2.0 */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+        
+        {/* Card 1: Pipeline Value */}
+        <div className="bg-white dark:bg-[#111] border border-slate-200 dark:border-white/10 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-blue-500/30 transition-all relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-bl-full -z-10 group-hover:scale-110 transition-transform"></div>
+          <div className="flex justify-between items-start mb-2">
+             <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center text-lg border border-blue-100 dark:border-blue-500/20">📊</div>
+             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active</span>
+          </div>
+          <h3 className="text-3xl font-black text-slate-900 dark:text-white mb-1">{totalActiveLeads}</h3>
+          <p className="text-xs font-medium text-slate-500">Total Leads in Pipeline</p>
+        </div>
+
+        {/* Card 2: Hot Leads */}
+        <div className="bg-white dark:bg-[#111] border border-slate-200 dark:border-white/10 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-orange-500/30 transition-all relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-orange-500/5 rounded-bl-full -z-10 group-hover:scale-110 transition-transform"></div>
+          <div className="flex justify-between items-start mb-2">
+             <div className="w-10 h-10 rounded-xl bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 flex items-center justify-center text-lg border border-orange-100 dark:border-orange-500/20">🔥</div>
+             <span className="text-[10px] font-bold text-orange-500 uppercase tracking-widest">Priority</span>
+          </div>
+          <h3 className="text-3xl font-black text-slate-900 dark:text-white mb-1">{hotCount}</h3>
+          <p className="text-xs font-medium text-slate-500">Ready for closing</p>
+        </div>
+
+        {/* Card 3: Scheduled Meetings */}
+        <div className="bg-white dark:bg-[#111] border border-slate-200 dark:border-white/10 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-purple-500/30 transition-all relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-bl-full -z-10 group-hover:scale-110 transition-transform"></div>
+          <div className="flex justify-between items-start mb-2">
+             <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center text-lg border border-purple-100 dark:border-purple-500/20">📅</div>
+             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Locked</span>
+          </div>
+          <h3 className="text-3xl font-black text-slate-900 dark:text-white mb-1">{scheduledMeetingsCount}</h3>
+          <p className="text-xs font-medium text-slate-500">Upcoming Architecture Calls</p>
+        </div>
+
+        {/* Card 4: Conversion Rate */}
+        <div className="bg-white dark:bg-[#111] border border-slate-200 dark:border-white/10 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-emerald-500/30 transition-all relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-bl-full -z-10 group-hover:scale-110 transition-transform"></div>
+          <div className="flex justify-between items-start mb-2">
+             <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-lg border border-emerald-100 dark:border-emerald-500/20">⚡</div>
+             <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">Success</span>
+          </div>
+          <div className="flex items-baseline gap-1 mb-1">
+             <h3 className="text-3xl font-black text-slate-900 dark:text-white">{conversionRate}</h3>
+             <span className="text-xl font-bold text-slate-400">%</span>
+          </div>
+          <p className="text-xs font-medium text-slate-500">Pipeline to Meeting ratio</p>
+        </div>
+
       </div>
 
       {/* 🌟 TABS */}
@@ -475,7 +531,7 @@ export default function LeadForgeDashboard() {
               ) : (
                 <div className="space-y-3 max-h-[600px] overflow-y-auto custom-scrollbar pr-1">
                   
-                  {/* 🌟 MAGIC FIX: COMPACT MEETING CARDS */}
+                  {/* 🌟 COMPACT MEETING CARDS */}
                   {displayedUpcomingMeetings.map((meeting) => (
                     <div 
                         key={meeting.meeting_id} 
@@ -601,7 +657,7 @@ export default function LeadForgeDashboard() {
         </div>
       )}
 
-{/* 🌟 SIMULATE LEAD FORM MODAL (RESTORED TO PREMIUM UI) */}
+      {/* 🌟 SIMULATE LEAD FORM MODAL (RESTORED TO PREMIUM UI) */}
       {isSimulateModalOpen && (
         <div style={{ zIndex: 99999 }} className="fixed inset-0 bg-slate-900/80 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white dark:bg-[#0a0a0a] border border-slate-200 dark:border-white/10 rounded-xl shadow-xl w-full max-w-2xl flex flex-col relative my-4">
@@ -694,7 +750,7 @@ export default function LeadForgeDashboard() {
         </div>
       )}
 
-      {/* 🌟 EDIT LEAD MODAL (Z-Index 100000 pe set hai, koi blur issue nahi) */}
+      {/* 🌟 EDIT LEAD MODAL */}
       {isEditModalOpen && (
         <div style={{ zIndex: 100000 }} className="fixed inset-0 bg-slate-900/90 dark:bg-black/90 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white dark:bg-[#0a0a0a] border border-slate-200 dark:border-white/20 rounded-xl shadow-2xl w-full max-w-2xl flex flex-col relative my-4 transform transition-all scale-100">
@@ -810,7 +866,7 @@ export default function LeadForgeDashboard() {
         </div>
       )}
 
-      {/* 🌟 LEAD DETAIL SIDE PANEL (ORIGINAL) */}
+      {/* 🌟 LEAD DETAIL SIDE PANEL */}
       {selectedLead && (
         <div style={{ zIndex: 99998 }} className="fixed inset-0 bg-slate-900/80 dark:bg-black/80 backdrop-blur-sm flex items-center justify-end">
           <div className="bg-white dark:bg-[#111] border-l border-slate-200 dark:border-white/10 shadow-2xl w-full max-w-sm h-full flex flex-col animate-in slide-in-from-right duration-300">
