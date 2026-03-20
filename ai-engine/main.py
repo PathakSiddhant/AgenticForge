@@ -5,6 +5,8 @@ import uuid
 import datetime
 import random 
 import string 
+import threading  # 🌟 NEW: Added for Background Thread
+import time       # 🌟 NEW: Added for Time delays
 import google.generativeai as genai 
 from pinecone import Pinecone 
 from fastapi.staticfiles import StaticFiles
@@ -75,6 +77,7 @@ from twilio.twiml.messaging_response import MessagingResponse
 # 🌟 ENTERPRISE WORKFLOW (LEADFORGE AI BRAIN)
 from agents.lead_scorer import score_lead_with_ai
 from services.email_sender import send_confirmation_email, send_meeting_confirmation_email
+from services.email_listener import check_inbox  # 🌟 NEW: Added for Email Polling
 
 
 # ==========================================
@@ -89,6 +92,25 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ==========================================
+# 🎧 BACKGROUND EMAIL LISTENER (FOR DEPLOYMENT)
+# ==========================================
+def start_email_polling():
+    print("🎧 [Email Listener] Background thread started. Monitoring inbox...")
+    while True:
+        try:
+            check_inbox()
+        except Exception as e:
+            print(f"⚠️ Polling Error: {e}")
+        time.sleep(15)  # Check every 15 seconds
+
+@app.on_event("startup")
+def startup_event():
+    # Jaise hi Render API start karega, ye thread alag se background mein chal jayega
+    listener_thread = threading.Thread(target=start_email_polling, daemon=True)
+    listener_thread.start()
+
 
 # ==========================================
 # 📂 HOST STATIC FILES (FOR PDF DOWNLOADS)
