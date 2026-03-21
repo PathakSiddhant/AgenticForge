@@ -94,21 +94,42 @@ app.add_middleware(
 )
 
 # ==========================================
-# 🎧 BACKGROUND EMAIL LISTENER (FOR DEPLOYMENT)
+# 🎧 BACKGROUND DAEMON (EMAIL LISTENER & DB SWEEPER)
 # ==========================================
-def start_email_polling():
-    print("🎧 [Email Listener] Background thread started. Monitoring inbox...")
+def clean_past_meetings():
+    """Silently deletes leads and meetings that are in the past"""
+    conn = get_db_connection()
+    if conn:
+        try:
+            cur = conn.cursor()
+            # 1. Pehle us lead ko delete karo jiska meeting date past mein hai
+            cur.execute("""
+                DELETE FROM leads 
+                WHERE id IN (
+                    SELECT lead_id FROM meetings WHERE meeting_date < CURRENT_DATE
+                )
+            """)
+            # 2. Phir us meeting ko delete karo
+            cur.execute("DELETE FROM meetings WHERE meeting_date < CURRENT_DATE")
+            conn.commit()
+        except Exception as e:
+            print(f"⚠️ DB Cleanup Error: {e}")
+        finally:
+            conn.close()
+
+def start_background_tasks():
+    print("🎧 [Background Worker] Started. Monitoring emails & sweeping old meetings...")
     while True:
         try:
-            check_inbox()
+            clean_past_meetings() # 🌟 NAYA: Auto-delete past meetings
+            check_inbox()         # Email check
         except Exception as e:
-            print(f"⚠️ Polling Error: {e}")
-        time.sleep(15)  # Check every 15 seconds
+            print(f"⚠️ Background Task Error: {e}")
+        time.sleep(15)  # Run every 15 seconds
 
 @app.on_event("startup")
 def startup_event():
-    # Jaise hi Render API start karega, ye thread alag se background mein chal jayega
-    listener_thread = threading.Thread(target=start_email_polling, daemon=True)
+    listener_thread = threading.Thread(target=start_background_tasks, daemon=True)
     listener_thread.start()
 
 
@@ -707,7 +728,9 @@ def chat_with_sdr(req: SDRChatRequest):
         print(f"❌ [Pinecone Search Error]: {e}")
         retrieved_context = "No specific company knowledge could be retrieved at this moment."
 
-    # 🌟 3. DYNAMIC PROMPT (The "Memory" & "Reschedule" Fix)
+    # 🌟 3. DYNAMIC PROMPT (The "Memory" & "Past Date Restriction" Fix)
+    current_date_str = datetime.datetime.now().strftime("%Y-%m-%d")
+    
     if existing_meeting:
         ex_date = existing_meeting.get('meeting_date') if isinstance(existing_meeting, dict) else existing_meeting[0]
         ex_time = existing_meeting.get('meeting_time') if isinstance(existing_meeting, dict) else existing_meeting[1]
@@ -721,19 +744,21 @@ def chat_with_sdr(req: SDRChatRequest):
         RULES:
         1. DO NOT ask them to book a NEW call. Acknowledge their existing meeting.
         2. IF the user asks to RESCHEDULE, ask them for a new date and time.
-        3. IF the user provides a CLEAR NEW DATE AND TIME for rescheduling, YOU MUST OUTPUT STRICT JSON ONLY formatted exactly like this:
+        3. CRITICAL: Today is {current_date_str}. You CANNOT schedule meetings in the past. If they give a past date, decline and ask for a future date.
+        4. IF the user provides a CLEAR FUTURE DATE AND TIME for rescheduling, YOU MUST OUTPUT STRICT JSON ONLY:
         {{
             "action": "reschedule_meeting",
             "date": "YYYY-MM-DD",
             "time": "HH:MM AM/PM"
         }}
-        4. If just chatting, answer politely using the knowledge base.
         """
     else:
         meeting_status_prompt = f"""
         CRITICAL STATUS: No meeting scheduled yet. Your ultimate goal is to smoothly pivot the conversation towards booking a 30-minute Architecture Review call.
         ALREADY BOOKED TIMES: {booked_times_str} (Do NOT allow booking at these times).
-        RULE: If the user provides a clear date and time, YOU MUST OUTPUT STRICT JSON ONLY: {{"action": "book_meeting", "date": "YYYY-MM-DD", "time": "HH:MM AM/PM"}}
+        RULES:
+        1. CRITICAL: Today is {current_date_str}. You CANNOT schedule meetings in the past. If the user asks for a past date, politely decline and ask for a future date.
+        2. If the user provides a clear future date and time, YOU MUST OUTPUT STRICT JSON ONLY: {{"action": "book_meeting", "date": "YYYY-MM-DD", "time": "HH:MM AM/PM"}}
         """
 
     prompt = f"""
@@ -743,7 +768,7 @@ def chat_with_sdr(req: SDRChatRequest):
     --- KNOWLEDGE BASE ---
     {retrieved_context}
     
-    Current Date: {datetime.datetime.now().strftime("%Y-%m-%d")}
+    Current Date: {current_date_str}
     {meeting_status_prompt}
     
     User's Message: "{req.message}"
