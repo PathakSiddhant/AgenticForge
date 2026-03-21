@@ -48,9 +48,7 @@ export default function LeadForgeDashboard() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   
-  // 🌟 State for detailed meeting panel
   const [selectedMeetingDetail, setSelectedMeetingDetail] = useState<ScheduledMeeting | null>(null);
-  const [selectedDateMeetings, setSelectedDateMeetings] = useState<{dateStr: string, meetings: ScheduledMeeting[]} | null>(null);
   
   const [currentDate, setCurrentDate] = useState(new Date()); 
 
@@ -62,6 +60,10 @@ export default function LeadForgeDashboard() {
   });
   const [editFormData, setEditFormData] = useState<Partial<Lead>>({});
   const [scheduleData, setScheduleData] = useState({ date: "", time: "10:00 AM" });
+
+  // 🌟 NAYA: "Today" ka string nikal rahe hain comparison aur min date ke liye
+  const realToday = new Date();
+  const todayStr = `${realToday.getFullYear()}-${String(realToday.getMonth() + 1).padStart(2, '0')}-${String(realToday.getDate()).padStart(2, '0')}`;
 
   const fetchData = async () => {
     setIsLoadingLeads(true);
@@ -87,12 +89,10 @@ export default function LeadForgeDashboard() {
     }
   };
 
-  // Initial Load
   useEffect(() => {
     fetchData();
   }, []);
 
-  // 🌟 MAGIC FIX: Auto-Sync (Polling) every 5 seconds without showing loading spinner
   useEffect(() => {
     const fetchSilent = async () => {
       try {
@@ -107,13 +107,10 @@ export default function LeadForgeDashboard() {
         if (meetsRes.ok) {
           setMeetings(await meetsRes.json());
         }
-      } catch (error) {
-        // Silently fail if server is temporarily unreachable
-      }
+      } catch (error) {}
     };
-
     const intervalId = setInterval(fetchSilent, 5000);
-    return () => clearInterval(intervalId); // Cleanup on unmount
+    return () => clearInterval(intervalId);
   }, []);
 
   const hotCount = leads.filter(l => l.status === "Hot").length;
@@ -250,7 +247,6 @@ export default function LeadForgeDashboard() {
         method: "DELETE"
       });
       if (res.ok) {
-        setSelectedDateMeetings(null);
         setSelectedMeetingDetail(null); 
         fetchData();
       }
@@ -273,7 +269,6 @@ export default function LeadForgeDashboard() {
         ? filteredMeetings 
         : meetings.filter(m => m.meeting_date === currentDatePickerValue);
 
-  // 🌟 ANALYTICS LOGIC 
   const totalActiveLeads = leads.length;
   const scheduledMeetingsCount = meetings.length;
   const totalEver = totalActiveLeads + scheduledMeetingsCount;
@@ -342,7 +337,7 @@ export default function LeadForgeDashboard() {
         </div>
       </div>
 
-      {/* 🌟 ANALYTICS DASHBOARD 2.0 */}
+      {/* 🌟 ANALYTICS DASHBOARD */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
         
         {/* Card 1: Pipeline Value */}
@@ -494,16 +489,26 @@ export default function LeadForgeDashboard() {
               {[...Array(daysInMonth)].map((_, i) => {
                 const day = i + 1;
                 const fullDateStr = getDateString(day);
+                
+                // 🌟 MAGIC FIX: Check if date is in the past
+                const isPastDate = fullDateStr < todayStr;
                 const dayMeetings = meetings.filter(m => m.meeting_date === fullDateStr);
                 const isSelected = currentDate.getDate() === day;
+                
                 return (
                   <div 
                     key={day} 
-                    onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), day))}
-                    className={`aspect-square rounded-lg p-2 relative transition-all flex flex-col items-center justify-center cursor-pointer border
-                      ${isSelected 
-                        ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-500/30 scale-105 z-10' 
-                        : 'bg-slate-50 dark:bg-white/5 border-slate-100 dark:border-white/5 hover:border-blue-400 dark:hover:border-blue-500 text-slate-700 dark:text-slate-300'
+                    onClick={() => {
+                        if (!isPastDate) {
+                            setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), day));
+                        }
+                    }}
+                    className={`aspect-square rounded-lg p-2 relative transition-all flex flex-col items-center justify-center border
+                      ${isPastDate 
+                          ? 'opacity-40 bg-slate-200 dark:bg-[#0a0a0a] border-transparent cursor-not-allowed' 
+                          : isSelected 
+                            ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-500/30 scale-105 z-10 cursor-pointer' 
+                            : 'bg-slate-50 dark:bg-white/5 border-slate-100 dark:border-white/5 hover:border-blue-400 dark:hover:border-blue-500 text-slate-700 dark:text-slate-300 cursor-pointer'
                       }
                     `}
                   >
@@ -841,7 +846,7 @@ export default function LeadForgeDashboard() {
         </div>
       )}
 
-      {/* 🌟 MANUAL SCHEDULE MODAL */}
+      {/* 🌟 MANUAL SCHEDULE MODAL (Past dates restricted) */}
       {isManualScheduleModalOpen && selectedLead && (
         <div style={{ zIndex: 99999 }} className="fixed inset-0 bg-slate-900/80 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white dark:bg-[#111] w-full max-w-sm rounded-2xl shadow-2xl p-6 border border-slate-200 dark:border-white/10">
@@ -849,7 +854,8 @@ export default function LeadForgeDashboard() {
             <form onSubmit={handleManualSchedule} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Date</label>
-                <input required type="date" value={scheduleData.date} onChange={e => setScheduleData({...scheduleData, date: e.target.value})} className="w-full bg-slate-50 dark:bg-[#1a1a1a] border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2 text-sm outline-none" />
+                {/* 🌟 MAGIC FIX: min={todayStr} forces user to pick today or future */}
+                <input required type="date" min={todayStr} value={scheduleData.date} onChange={e => setScheduleData({...scheduleData, date: e.target.value})} className="w-full bg-slate-50 dark:bg-[#1a1a1a] border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2 text-sm outline-none" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Time</label>
