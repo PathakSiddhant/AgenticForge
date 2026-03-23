@@ -45,6 +45,13 @@ export default function LeadForgeDashboard() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isManualScheduleModalOpen, setIsManualScheduleModalOpen] = useState(false); 
   
+  // 🌟 NAYA: Export Modal States
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const realToday = new Date();
+  const todayStr = `${realToday.getFullYear()}-${String(realToday.getMonth() + 1).padStart(2, '0')}-${String(realToday.getDate()).padStart(2, '0')}`;
+  // Default date range ek hafte ka rakh rahe hain
+  const [exportDates, setExportDates] = useState({ start: todayStr, end: todayStr });
+  
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   
@@ -60,10 +67,6 @@ export default function LeadForgeDashboard() {
   });
   const [editFormData, setEditFormData] = useState<Partial<Lead>>({});
   const [scheduleData, setScheduleData] = useState({ date: "", time: "10:00 AM" });
-
-  // 🌟 NAYA: "Today" ka string nikal rahe hain comparison aur min date ke liye
-  const realToday = new Date();
-  const todayStr = `${realToday.getFullYear()}-${String(realToday.getMonth() + 1).padStart(2, '0')}-${String(realToday.getDate()).padStart(2, '0')}`;
 
   const fetchData = async () => {
     setIsLoadingLeads(true);
@@ -316,6 +319,14 @@ export default function LeadForgeDashboard() {
             className="bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 px-3 py-2 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 border border-slate-200 dark:border-white/10 shadow-sm"
           >
             <span className={isLoadingLeads ? "animate-spin" : ""}>🔄</span> Sync
+          </button>
+
+          {/* 🌟 NAYA: Export Reports Button */}
+          <button 
+            onClick={() => setIsExportModalOpen(true)}
+            className="bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 px-3 py-2 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 border border-emerald-200 dark:border-emerald-500/20 shadow-sm"
+          >
+            📥 Export Reports
           </button>
 
           <div className="relative w-full sm:w-64">
@@ -946,6 +957,52 @@ export default function LeadForgeDashboard() {
               >
                 🗑️ Delete Lead
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🌟 EXPORT REPORTS MODAL */}
+      {isExportModalOpen && (
+        <div style={{ zIndex: 99999 }} className="fixed inset-0 bg-slate-900/80 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#111] w-full max-w-md rounded-2xl shadow-2xl p-6 border border-slate-200 dark:border-white/10">
+            <div className="flex justify-between items-center mb-5">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Download Business Reports</h3>
+                <p className="text-xs text-slate-500">Get data-driven insights and AI memos.</p>
+              </div>
+              <button onClick={() => setIsExportModalOpen(false)} className="text-slate-400 hover:text-slate-900 dark:hover:text-white text-2xl font-bold transition-colors">&times;</button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">From Date</label>
+                  <input type="date" value={exportDates.start} onChange={e => setExportDates({...exportDates, start: e.target.value})} className="w-full bg-slate-50 dark:bg-[#1a1a1a] border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2 text-sm outline-none cursor-pointer" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">To Date</label>
+                  <input type="date" value={exportDates.end} onChange={e => setExportDates({...exportDates, end: e.target.value})} className="w-full bg-slate-50 dark:bg-[#1a1a1a] border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2 text-sm outline-none cursor-pointer" />
+                </div>
+              </div>
+
+              <div className="pt-5 flex flex-col gap-3 border-t border-slate-200 dark:border-white/10">
+                {/* 📊 EXCEL DOWNLOAD BUTTON */}
+                <button 
+                  onClick={() => window.open(`http://127.0.0.1:8000/api/export/excel?start_date=${exportDates.start}&end_date=${exportDates.end}`, '_blank')}
+                  className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-bold shadow-sm flex justify-center items-center gap-2 transition-transform hover:scale-[1.02] text-sm"
+                >
+                  📊 Download Excel Workbook (Data & Charts)
+                </button>
+                
+                {/* 🤖 AI MEMO DOWNLOAD BUTTON */}
+                <button 
+                  onClick={() => window.open(`http://127.0.0.1:8000/api/export/ai-memo?start_date=${exportDates.start}&end_date=${exportDates.end}`, '_blank')}
+                  className="w-full bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-200 text-white dark:text-slate-900 py-3 rounded-xl font-bold shadow-sm flex justify-center items-center gap-2 transition-transform hover:scale-[1.02] text-sm"
+                >
+                  🤖 Generate AI Executive Memo (.md)
+                </button>
+              </div>
             </div>
           </div>
         </div>
