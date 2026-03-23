@@ -7,10 +7,13 @@ import random
 import string 
 import threading  # 🌟 NEW: Added for Background Thread
 import time       # 🌟 NEW: Added for Time delays
+import io         # 🌟 NEW: Added for Excel Export
+import pandas as pd # 🌟 NEW: Added for Excel Export
 import google.generativeai as genai 
 from pinecone import Pinecone 
 from fastapi.staticfiles import StaticFiles
 from fastapi import FastAPI, Request, Form, Response, HTTPException, BackgroundTasks
+from fastapi.responses import StreamingResponse, PlainTextResponse # 🌟 NEW: Added for Excel & Memo Export
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -97,20 +100,19 @@ app.add_middleware(
 # 🎧 BACKGROUND DAEMON (EMAIL LISTENER & DB SWEEPER)
 # ==========================================
 def clean_past_meetings():
-    """Silently deletes leads and meetings that are in the past"""
+    """Soft-deletes past meetings by changing their lead status, preserving data for Analytics"""
     conn = get_db_connection()
     if conn:
         try:
             cur = conn.cursor()
-            # 1. Pehle us lead ko delete karo jiska meeting date past mein hai
+            # 🌟 NAYA LOGIC: Delete mat karo, bas status 'Completed Meeting' kardo
             cur.execute("""
-                DELETE FROM leads 
+                UPDATE leads 
+                SET lead_status = 'Completed Meeting' 
                 WHERE id IN (
                     SELECT lead_id FROM meetings WHERE meeting_date < CURRENT_DATE
-                )
+                ) AND lead_status = 'Meeting Scheduled'
             """)
-            # 2. Phir us meeting ko delete karo
-            cur.execute("DELETE FROM meetings WHERE meeting_date < CURRENT_DATE")
             conn.commit()
         except Exception as e:
             print(f"⚠️ DB Cleanup Error: {e}")
@@ -121,7 +123,7 @@ def start_background_tasks():
     print("🎧 [Background Worker] Started. Monitoring emails & sweeping old meetings...")
     while True:
         try:
-            clean_past_meetings() # 🌟 NAYA: Auto-delete past meetings
+            clean_past_meetings() # 🌟 NAYA: Auto-update past meetings (Soft Delete)
             check_inbox()         # Email check
         except Exception as e:
             print(f"⚠️ Background Task Error: {e}")
@@ -654,6 +656,215 @@ def complete_meeting(lead_id: int):
     finally:
         conn.close()
 
+
+# 🌟 NAYA: EXCEL EXPORT (100% Data Fix + Power BI Engine)
+@app.get("/api/export/excel")
+def export_leads_excel(start_date: str, end_date: str):
+    conn = get_db_connection()
+    if not conn: raise HTTPException(status_code=500, detail="DB Error")
+    
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT name, email, company_name, company_size, budget, timeline, pain_point, ai_score, lead_status, created_at 
+            FROM leads 
+            WHERE DATE(created_at) >= %s AND DATE(created_at) <= %s
+            ORDER BY ai_score DESC
+        """, (start_date, end_date))
+        
+        rows = cur.fetchall()
+        
+        if not rows:
+            raise HTTPException(status_code=404, detail="No leads found in this date range.")
+
+        # 🌟 THE REAL BUG FIX: Smartly loading data from DB!
+        columns = [desc[0] for desc in cur.description]
+        if hasattr(rows[0], 'keys') or isinstance(rows[0], dict):
+            # Agar DB dictionary bhej raha hai (Jo tera issue tha)
+            df = pd.DataFrame([dict(r) for r in rows])
+        else:
+            # Agar DB tuple bhej raha hai
+            df = pd.DataFrame(rows, columns=columns)
+        
+        # 2. Convert Dates safely
+        if 'created_at' in df.columns:
+            df['created_at'] = pd.to_datetime(df['created_at'], errors='coerce').dt.strftime('%Y-%m-%d %H:%M')
+        df.fillna("N/A", inplace=True)
+
+        # 3. Categorize
+        df_hot = df[df['lead_status'] == 'Hot']
+        df_warm = df[df['lead_status'] == 'Warm']
+        df_cold = df[df['lead_status'] == 'Cold']
+        df_meetings = df[df['lead_status'].isin(['Meeting Scheduled', 'Completed Meeting'])]
+
+        # 4. Analytics
+        status_counts = df['lead_status'].value_counts().reset_index()
+        status_counts.columns = ['Status', 'Count']
+        
+        budget_counts = df['budget'].value_counts().reset_index()
+        budget_counts.columns = ['Budget', 'Count']
+
+        output = io.BytesIO()
+        
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+            workbook = writer.book
+            
+            # --- STYLES ---
+            title_fmt = workbook.add_format({'bold': True, 'font_size': 24, 'font_color': '#0F172A'})
+            kpi_title = workbook.add_format({'bold': True, 'font_size': 12, 'font_color': '#64748B', 'align': 'center'})
+            kpi_val = workbook.add_format({'bold': True, 'font_size': 28, 'font_color': '#2563EB', 'align': 'center', 'border': 1, 'bg_color': '#F8FAFC'})
+            header_fmt = workbook.add_format({'bold': True, 'bg_color': '#1E3A8A', 'font_color': 'white', 'border': 1})
+
+            # --- SHEET 1: Executive Dashboard ---
+            ws_dash = workbook.add_worksheet('Executive Dashboard')
+            ws_dash.hide_gridlines(2)
+            ws_dash.write('B2', f'LeadForge Enterprise Analytics ({start_date} to {end_date})', title_fmt)
+            
+            ws_dash.write('B4', 'TOTAL LEADS', kpi_title)
+            ws_dash.write('B5', len(df), kpi_val)
+            ws_dash.write('D4', 'HOT LEADS', kpi_title)
+            ws_dash.write('D5', len(df_hot), kpi_val)
+            ws_dash.write('F4', 'MEETINGS', kpi_title)
+            ws_dash.write('F5', len(df_meetings), kpi_val)
+            ws_dash.write('H4', 'CONVERSION %', kpi_title)
+            conversion = round((len(df_meetings) / len(df)) * 100) if len(df) > 0 else 0
+            ws_dash.write('H5', f"{conversion}%", kpi_val)
+
+            # --- SHEET 2: Analytics Data ---
+            status_counts.to_excel(writer, sheet_name='Analytics Data', index=False, startcol=0)
+            budget_counts.to_excel(writer, sheet_name='Analytics Data', index=False, startcol=3)
+            
+            pie_chart = workbook.add_chart({'type': 'pie'})
+            pie_chart.add_series({
+                'name': 'Pipeline Status',
+                'categories': ['Analytics Data', 1, 0, len(status_counts), 0],
+                'values':     ['Analytics Data', 1, 1, len(status_counts), 1],
+                'data_labels': {'percentage': True}
+            })
+            pie_chart.set_title({'name': 'Lead Status Distribution'})
+            pie_chart.set_size({'width': 350, 'height': 250})
+            ws_dash.insert_chart('B8', pie_chart)
+
+            bar_chart = workbook.add_chart({'type': 'column'})
+            bar_chart.add_series({
+                'name': 'Budget Distribution',
+                'categories': ['Analytics Data', 1, 3, len(budget_counts), 3],
+                'values':     ['Analytics Data', 1, 4, len(budget_counts), 4],
+                'fill': {'color': '#10B981'}
+            })
+            bar_chart.set_title({'name': 'Revenue Potential'})
+            bar_chart.set_size({'width': 350, 'height': 250})
+            bar_chart.set_legend({'position': 'none'})
+            ws_dash.insert_chart('F8', bar_chart)
+
+            # --- Native Formatting Function ---
+            def write_safe_sheet(data_df, sheet_name):
+                if data_df.empty:
+                    ws = workbook.add_worksheet(sheet_name)
+                    ws.write('A1', 'No data available for this category.')
+                    return
+                
+                clean_cols = [str(c).replace('_', ' ').title() for c in data_df.columns]
+                data_df.columns = clean_cols
+                data_df.to_excel(writer, sheet_name=sheet_name, index=False)
+                
+                ws = writer.sheets[sheet_name]
+                max_row, max_col = data_df.shape
+                
+                ws.autofilter(0, 0, max_row, max_col - 1)
+                ws.set_column(0, max_col - 1, 20)
+                for col_num, col_name in enumerate(clean_cols):
+                    ws.write(0, col_num, col_name, header_fmt)
+
+            # --- Write Sheets ---
+            write_safe_sheet(df, 'Master Pipeline')
+            write_safe_sheet(df_hot, 'Hot Leads')
+            write_safe_sheet(df_warm, 'Warm Leads')
+            write_safe_sheet(df_cold, 'Cold Leads')
+            write_safe_sheet(df_meetings, 'Scheduled Meetings')
+
+        output.seek(0)
+        file_bytes = output.read()
+        
+        # 🌟 NAYA: File ke naam mein automatically dates aayengi!
+        filename = f"LeadForge_Analytics_{start_date}_to_{end_date}.xlsx"
+        headers = {'Content-Disposition': f'attachment; filename="{filename}"'}
+        
+        return Response(
+            content=file_bytes, 
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
+            headers=headers
+        )
+        
+    except Exception as e:
+        print(f"❌ Excel Export Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+
+# 🤖 NAYA: AI EXECUTIVE MEMO EXPORT (Gemini powered Business Intelligence)
+@app.get("/api/export/ai-memo")
+def export_ai_memo(start_date: str, end_date: str):
+    conn = get_db_connection()
+    if not conn: raise HTTPException(status_code=500, detail="DB Error")
+    
+    try:
+        cur = conn.cursor()
+        # Dates ke hisaab se data nikalna
+        cur.execute("""
+            SELECT name, company_name, budget, pain_point, lead_status 
+            FROM leads 
+            WHERE DATE(created_at) >= %s AND DATE(created_at) <= %s
+        """, (start_date, end_date))
+        
+        columns = [desc[0] for desc in cur.description]
+        leads_data = [dict(zip(columns, row)) for row in cur.fetchall()]
+        
+        if not leads_data:
+            raise HTTPException(status_code=404, detail="No leads found to analyze.")
+
+        # Data ko summarize karna Gemini ke liye (Tokens bachane ke liye)
+        total_leads = len(leads_data)
+        hot_leads = [l for l in leads_data if l['lead_status'] == 'Hot']
+        
+        data_summary = f"Total Leads Captured: {total_leads}\nHot Leads (Ready to close): {len(hot_leads)}\n\n"
+        data_summary += "Details of Hot Leads:\n"
+        for l in hot_leads:
+            data_summary += f"- {l['name']} from {l['company_name']} (Budget: {l['budget']}). Pain Point: {l['pain_point']}\n"
+        
+        # The Master Prompt for the CEO
+        prompt = f"""
+        You are an elite Business Analyst for 'LeadForge CRM'.
+        Analyze the following lead data collected from {start_date} to {end_date}.
+        
+        DATA:
+        {data_summary}
+        
+        Write a highly professional, 1-page Executive Summary Memo addressed to the Management Team.
+        Include:
+        1. A brief overview of the lead volume and pipeline health.
+        2. Key pain points observed from the Hot Leads.
+        3. Strategic recommendations on how the sales team should approach closing these specific Hot Leads.
+        
+        Format it professionally using Markdown headers, bullet points, and bold text. Keep it concise, actionable, and data-driven. Do not include placeholder text.
+        """
+        
+        model = genai.GenerativeModel('gemini-2.5-flash')
+        response = model.generate_content(prompt)
+        memo_text = response.text
+        
+        # File ko directly Markdown (.md) format mein download karwana
+        filename = f"AI_Executive_Memo_{start_date}_to_{end_date}.md"
+        headers = {'Content-Disposition': f'attachment; filename="{filename}"'}
+        
+        return PlainTextResponse(memo_text, headers=headers, media_type="text/markdown")
+        
+    except Exception as e:
+        print(f"❌ AI Memo Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
 
 # ==========================================
 # 🤖 THE NEW CHATBOT BACKEND ENGINE (SELF-AWARE RAG)
