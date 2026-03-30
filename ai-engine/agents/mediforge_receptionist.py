@@ -168,19 +168,16 @@ def cancel_appointment(patient_phone: str) -> str:
 
 class MediForgeReceptionist:
     def __init__(self):
-        ist = timezone(timedelta(hours=5, minutes=30))
-        now_ist = datetime.now(ist)
-        today_date = now_ist.strftime("%Y-%m-%d")
-        
-        self.system_prompt = f"""
+        # 🌟 Date calculation yahan se hata di gayi hai
+        self.system_prompt = """
         You are the Elite AI Receptionist for MediForge Hospital.
         
         CRITICAL RULES FOR LANGUAGE & TONE:
         1. LANGUAGE MIRRORING: You must perfectly mirror the language and tone of the user. If they speak Hinglish, reply in Hinglish. 
 
         CRITICAL CONTEXT & TIME AWARENESS:
-        - TODAY'S DATE IS: {today_date} 
         - HOSPITAL TIMINGS: 09:00 AM to 05:00 PM. The last slot is 04:30 PM.
+        - You will receive the EXACT live date and time invisibly with the user's message. Always follow that live date strictly.
 
         HOSPITAL CATEGORIES:
         - Cardiology (Heart)
@@ -209,20 +206,25 @@ class MediForgeReceptionist:
         self.chat_session = self.model.start_chat(enable_automatic_function_calling=True)
 
     def chat(self, user_message: str):
-        # 🌟 THE FAIL-PROOF TIME CHECK IN CODE
+        # 🌟 DIKKAT SOLVED: Live date har message aane pe calculate hogi
         ist = timezone(timedelta(hours=5, minutes=30))
         now_ist = datetime.now(ist)
+        today_date = now_ist.strftime("%Y-%m-%d")
+        current_time = now_ist.strftime("%I:%M %p")
         
+        # 🌟 AI ko chupke se aaj ki date pass karna
+        hidden_context = f" [SYSTEM CONTEXT: The exact current live date is {today_date} and time is {current_time}. Base all your slot checking on this date.]"
+
         # Check if the current time is past 4:00 PM (16:00)
         if now_ist.hour >= 16:
-            # Check if the user is asking for today
             msg_lower = user_message.lower()
             if any(word in msg_lower for word in ["today", "aaj", "ab", "abhi"]):
-                # Append a hidden instruction to the AI
-                hidden_instruction = " [SYSTEM INSTRUCTION: The time is past 4 PM. We are closed for today's bookings. Politely apologize and ask if they want an appointment for tomorrow. DO NOT ask for their department or symptoms right now.]"
-                user_message = user_message + hidden_instruction
+                hidden_context += " [SYSTEM INSTRUCTION: The time is past 4 PM. We are closed for today's bookings. Politely apologize and ask if they want an appointment for tomorrow. DO NOT ask for their department or symptoms right now.]"
+
+        # Message + Live Context dono AI ko jayenge
+        full_message = user_message + hidden_context
 
         print(f"\n🗣️ [Patient]: {user_message}")
-        response = self.chat_session.send_message(user_message)
+        response = self.chat_session.send_message(full_message)
         print(f"🤖 [MediForge AI]: {response.text}")
         return response.text
