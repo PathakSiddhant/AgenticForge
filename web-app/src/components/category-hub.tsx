@@ -1,5 +1,5 @@
 import { AgentCard } from "@/components/agent-card";
-import { CATEGORY_ICONS, getAgentsByCategory, type AgentCategory } from "@/lib/agents";
+import { CATEGORY_HUE, CATEGORY_ICONS, getAgentsByCategory, type AgentCategory } from "@/lib/agents";
 
 export function CategoryHub({
   category,
@@ -10,11 +10,15 @@ export function CategoryHub({
 }) {
   const agents = getAgentsByCategory(category);
   const CategoryIcon = CATEGORY_ICONS[category];
+  const hue = CATEGORY_HUE[category];
 
   return (
     <div className="mx-auto max-w-6xl px-4 pt-8 pb-12 sm:px-6 lg:px-8">
       <div className="mb-10 flex items-start gap-4">
-        <div className="flex size-12 shrink-0 items-center justify-center rounded-md bg-accent-tint text-accent-ink">
+        <div
+          className="category-badge flex size-12 shrink-0 items-center justify-center rounded-md"
+          style={hue !== undefined ? ({ "--cat-hue": hue } as React.CSSProperties) : undefined}
+        >
           <CategoryIcon className="size-6" />
         </div>
         <div>

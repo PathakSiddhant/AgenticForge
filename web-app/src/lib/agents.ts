@@ -82,6 +82,24 @@ export const CATEGORY_ICONS: Record<AgentCategory, Icon> = {
   "Travel & Event Management": CompassIcon,
 };
 
+// A quiet identity per category - the same restrained tint/ink system as
+// the brand accent, just rotated to a different hue. Used sparingly (a
+// category-hub header badge, a card's hover state) so the product reads as
+// "many specialized agents" rather than "one generic accent everywhere",
+// without turning any single screen into a rainbow. Developer Sandbox
+// intentionally has none - it's the brand's own home base, so it keeps the
+// default accent instead of a category color.
+export const CATEGORY_HUE: Partial<Record<AgentCategory, number>> = {
+  "Finance & Trading": 150,
+  "Human Resources": 290,
+  "Education & Research": 225,
+  "Sales & Marketing": 15,
+  "Customer Support": 195,
+  "Logistics & Supply Chain": 75,
+  "Media & Content": 320,
+  "Travel & Event Management": 255,
+};
+
 export const ALL_AGENTS: AgentDefinition[] = [
   {
     slug: "json-structurer",

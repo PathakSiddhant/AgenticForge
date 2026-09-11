@@ -35,6 +35,14 @@
   --danger: oklch(0.58 0.22 25);
   --danger-tint: oklch(0.95 0.06 25);
 
+  /* Per-category identity recipe (hue is set per element via --cat-hue;
+     see .category-badge below). Same shape as the accent tokens above, so
+     a category badge always reads as part of the same system. */
+  --cat-tint-l: 0.95;
+  --cat-tint-c: 0.045;
+  --cat-ink-l: 0.45;
+  --cat-ink-c: 0.15;
+
   --shadow-color: 240 5% 40%;
 }
 
@@ -62,6 +70,11 @@
   --warning-tint: oklch(0.3 0.06 75);
   --danger: oklch(0.7 0.19 25);
   --danger-tint: oklch(0.3 0.08 25);
+
+  --cat-tint-l: 0.28;
+  --cat-tint-c: 0.07;
+  --cat-ink-l: 0.82;
+  --cat-ink-c: 0.13;
 
   --shadow-color: 0 0% 0%;
 }
@@ -142,6 +155,27 @@
 }
 
 @layer utilities {
+  /* Set --cat-hue inline on the element to pick a category's identity
+     color; falls back to the brand accent's hue when unset. */
+  .category-badge {
+    background-color: oklch(var(--cat-tint-l) var(--cat-tint-c) var(--cat-hue, 35));
+    color: oklch(var(--cat-ink-l) var(--cat-ink-c) var(--cat-hue, 35));
+  }
+
+  /* Same recipe, but only on hover of an ancestor `.group` - for dense
+     grids (the agent card grid) where showing every category's color at
+     rest would read as a rainbow instead of a system. */
+  .group:hover .category-badge-hover {
+    background-color: oklch(var(--cat-tint-l) var(--cat-tint-c) var(--cat-hue, 35));
+    color: oklch(var(--cat-ink-l) var(--cat-ink-c) var(--cat-hue, 35));
+  }
+
+  /* Ink only, no tint background - for a bare icon next to text (a
+     section heading) where a colored chip would look out of place. */
+  .category-ink {
+    color: oklch(var(--cat-ink-l) var(--cat-ink-c) var(--cat-hue, 35));
+  }
+
   .custom-scrollbar {
     scrollbar-width: thin;
     scrollbar-color: var(--color-border-strong) transparent;

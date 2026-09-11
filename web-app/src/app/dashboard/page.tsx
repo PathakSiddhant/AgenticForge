@@ -9,6 +9,7 @@ import {
   AGENT_CATEGORIES,
   ALL_AGENTS,
   CATEGORY_HREF,
+  CATEGORY_HUE,
   CATEGORY_ICONS,
   getAgentsByCategory,
 } from "@/lib/agents";
@@ -79,11 +80,15 @@ export default function DashboardPage() {
         {AGENT_CATEGORIES.map((category) => {
           const agents = getAgentsByCategory(category);
           const CategoryIcon = CATEGORY_ICONS[category];
+          const hue = CATEGORY_HUE[category];
           return (
             <div key={category}>
               <div className="mb-4 flex items-baseline justify-between">
                 <h2 className="flex items-center gap-2 text-[15px] font-semibold text-ink">
-                  <CategoryIcon className="size-4 text-ink-subtle" />
+                  <CategoryIcon
+                    className="category-ink size-4"
+                    style={hue !== undefined ? ({ "--cat-hue": hue } as React.CSSProperties) : undefined}
+                  />
                   {category}
                 </h2>
                 <Link
