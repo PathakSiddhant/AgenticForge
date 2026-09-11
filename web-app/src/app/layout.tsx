@@ -2,6 +2,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 
+import { AppEntrance } from "@/components/app-entrance";
 import Sidebar from "@/components/sidebar";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Topbar } from "@/components/topbar";
@@ -57,6 +58,7 @@ export default function RootLayout({
                   "!bg-surface-raised !border !border-border !text-ink !shadow-lg",
               }}
             />
+            <AppEntrance />
           </ThemeProvider>
         </body>
       </html>

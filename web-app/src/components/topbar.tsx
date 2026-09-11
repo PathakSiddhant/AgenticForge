@@ -11,7 +11,7 @@ export function Topbar() {
   if (pathname === "/" || pathname.startsWith("/sign-")) return null;
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-border px-6">
+    <header className="flex h-20 shrink-0 items-center justify-between gap-4 border-b border-border px-6">
       <div className="max-w-md flex-1">
         <CommandPalette />
       </div>

@@ -98,15 +98,15 @@ export default function Sidebar() {
 
       <div
         className={cn(
-          "flex h-16 shrink-0 items-center gap-2.5 px-4",
+          "flex h-20 shrink-0 items-center gap-3 px-4",
           collapsed && "justify-center px-0"
         )}
       >
-        <div className="relative size-7 shrink-0">
-          <Image src="/logo.png" alt="" fill className="object-contain" />
+        <div className="relative size-11 shrink-0">
+          <Image src="/logo.png" alt="" fill priority className="object-contain" />
         </div>
         {!collapsed && (
-          <span className="truncate text-[15px] font-semibold tracking-tight text-ink">
+          <span className="truncate text-base font-semibold tracking-tight text-ink">
             AgenticForge
           </span>
         )}

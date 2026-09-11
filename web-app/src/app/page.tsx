@@ -254,12 +254,12 @@ export default function LandingPage() {
 
 function LandingNav() {
   return (
-    <header className="sticky top-0 z-sticky flex h-16 items-center justify-between border-b border-border bg-background/80 px-6 backdrop-blur-sm">
-      <Link href="/" className="flex items-center gap-2.5">
-        <div className="relative size-6">
-          <Image src="/logo.png" alt="" fill className="object-contain" />
+    <header className="sticky top-0 z-sticky flex h-20 items-center justify-between border-b border-border bg-background/80 px-6 backdrop-blur-sm">
+      <Link href="/" className="flex items-center gap-3">
+        <div className="relative size-10">
+          <Image src="/logo.png" alt="" fill priority className="object-contain" />
         </div>
-        <span className="text-[15px] font-semibold tracking-tight text-ink">
+        <span className="text-base font-semibold tracking-tight text-ink">
           AgenticForge
         </span>
       </Link>
