@@ -1,7 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, useRef, Suspense } from "react";
+import { PaperPlaneRightIcon, VideoCameraIcon, WarningCircleIcon } from "@phosphor-icons/react/dist/ssr";
 import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 interface ChatMessage {
   role: "ai" | "user";
@@ -9,7 +13,6 @@ interface ChatMessage {
   isLink?: boolean;
 }
 
-// 🔥 INNER COMPONENT (logic yahan)
 function AIBookingPageInner() {
   const searchParams = useSearchParams();
   const leadId = searchParams.get("lead_id");
@@ -18,21 +21,15 @@ function AIBookingPageInner() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: "ai",
-      text: `Hi ${leadName}! I have your profile details pulled up from our system. I see you're interested in exploring how AgenticForge can help your enterprise. When would be a good time for a deep-dive call with our engineering team?`,
+      text: `Hi ${leadName}! I have your profile pulled up from our system. When would be a good time for a deep-dive call with our engineering team?`,
     },
   ]);
-
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = () => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
   useEffect(() => {
-    scrollToBottom();
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
 
   const handleSend = async (e: React.FormEvent) => {
@@ -47,40 +44,22 @@ function AIBookingPageInner() {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/chat/book`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          lead_id: parseInt(leadId, 10),
-          message: userText,
-          history: [],
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lead_id: parseInt(leadId, 10), message: userText, history: [] }),
       });
-
       const data = await response.json();
-
       setMessages((prev) => [...prev, { role: "ai", text: data.reply }]);
 
       if (data.is_booked && data.meet_link) {
         setTimeout(() => {
-          setMessages((prev) => [
-            ...prev,
-            {
-              role: "ai",
-              text: `🔗 ${data.meet_link}`,
-              isLink: true,
-            },
-          ]);
+          setMessages((prev) => [...prev, { role: "ai", text: data.meet_link, isLink: true }]);
         }, 1000);
       }
     } catch (error) {
       console.error("Error communicating with AI:", error);
       setMessages((prev) => [
         ...prev,
-        {
-          role: "ai",
-          text: "Oops! Connecting to my brain failed. Give me a second.",
-        },
+        { role: "ai", text: "Connection error - please try again in a moment." },
       ]);
     } finally {
       setIsTyping(false);
@@ -89,55 +68,41 @@ function AIBookingPageInner() {
 
   if (!leadId) {
     return (
-      <div className="h-screen w-full flex items-center justify-center bg-slate-50 dark:bg-[#0a0a0a]">
-        <div className="text-center p-8 bg-white dark:bg-[#111] rounded-2xl shadow-xl border border-red-200 dark:border-red-900/30">
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
-            Invalid Booking Link
-          </h2>
-          <p className="text-slate-500">
-            Please use the personalized link sent to your email.
-          </p>
+      <div className="flex h-dvh w-full items-center justify-center bg-background">
+        <div className="max-w-sm rounded-lg border border-danger/20 bg-surface p-8 text-center">
+          <WarningCircleIcon className="mx-auto mb-3 size-8 text-danger" weight="fill" />
+          <h2 className="mb-1.5 text-lg font-semibold text-ink">Invalid booking link</h2>
+          <p className="text-sm text-ink-muted">Please use the personalized link sent to your email.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-[85vh] w-full max-w-4xl mx-auto flex flex-col pt-2 pb-6 font-sans overflow-hidden">
-      
-      {/* HEADER */}
-      <div className="flex-none text-center mb-5 mt-2">
-        <div className="inline-flex items-center justify-center gap-3 mb-2">
-          <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-black text-sm text-white shadow-md">
-            AF
-          </div>
-          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-            Schedule Consultation
-          </h1>
-        </div>
-        <p className="text-slate-500 dark:text-slate-400 text-sm">
-          Ask me about AgenticForge or tell me when you&apos;re free for a call!
+    <div className="mx-auto flex h-dvh w-full max-w-3xl flex-col overflow-hidden p-6">
+      <div className="mb-5 mt-2 flex-none text-center">
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">Schedule a Consultation</h1>
+        <p className="mt-1 text-sm text-ink-muted">
+          Ask about AgenticForge or tell me when you&apos;re free for a call.
         </p>
       </div>
 
-      {/* CHAT CARD */}
-      <div className="flex-1 flex flex-col bg-white dark:bg-[#111] border border-slate-200 dark:border-white/10 rounded-2xl shadow-xl overflow-hidden min-h-0">
-        
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 bg-slate-50 dark:bg-[#0a0a0a]">
-          
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-background">
+        <div className="flex-1 space-y-5 overflow-y-auto custom-scrollbar bg-surface p-5">
           {messages.map((msg, idx) => (
-            <div key={idx} className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[85%] md:max-w-[75%] p-4 text-[15px] leading-relaxed shadow-sm ${
-                msg.role === 'user' 
-                  ? 'bg-blue-600 text-white rounded-2xl rounded-tr-sm' 
-                  : msg.isLink 
-                    ? 'bg-green-500/10 border border-green-500/30 text-green-700 dark:text-green-400 font-medium rounded-2xl rounded-tl-sm'
-                    : 'bg-white dark:bg-[#1a1a1a] text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-white/5 rounded-2xl rounded-tl-sm whitespace-pre-wrap'
-              }`}>
+            <div key={idx} className={`flex w-full ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div
+                className={`max-w-[85%] rounded-lg p-3.5 text-sm leading-relaxed shadow-sm md:max-w-[75%] ${
+                  msg.role === "user"
+                    ? "bg-accent text-white"
+                    : msg.isLink
+                      ? "border border-success/20 bg-success-tint font-medium text-success"
+                      : "whitespace-pre-wrap border border-border bg-background text-ink"
+                }`}
+              >
                 {msg.isLink ? (
-                  <a href={msg.text.split("🔗")[1]?.trim() || "#"} target="_blank" className="underline font-bold">
-                    Join Google Meet 🎥
+                  <a href={msg.text} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 underline">
+                    <VideoCameraIcon weight="fill" /> Join Google Meet
                   </a>
                 ) : (
                   msg.text
@@ -148,27 +113,27 @@ function AIBookingPageInner() {
 
           {isTyping && (
             <div className="flex w-full justify-start">
-              <div className="bg-white dark:bg-[#1a1a1a] p-4 rounded-2xl shadow-sm">
-                typing...
+              <div className="flex items-center gap-1.5 rounded-lg border border-border bg-background p-3.5">
+                <span className="size-1.5 animate-bounce rounded-full bg-ink-subtle" />
+                <span className="size-1.5 animate-bounce rounded-full bg-ink-subtle [animation-delay:0.15s]" />
+                <span className="size-1.5 animate-bounce rounded-full bg-ink-subtle [animation-delay:0.3s]" />
               </div>
             </div>
           )}
-
           <div ref={chatEndRef} />
         </div>
 
-        {/* INPUT */}
-        <div className="p-4 bg-white dark:bg-[#111] border-t">
-          <form onSubmit={handleSend} className="relative flex items-center">
-            <input
+        <div className="border-t border-border bg-background p-3">
+          <form onSubmit={handleSend} className="flex items-center gap-2">
+            <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              className="w-full border rounded-xl py-3 pl-4 pr-12"
               placeholder="Ask something..."
+              disabled={isTyping}
             />
-            <button className="absolute right-2 bg-blue-600 text-white px-3 py-1 rounded-lg">
-              Send
-            </button>
+            <Button type="submit" size="icon" disabled={isTyping || !input.trim()} aria-label="Send">
+              <PaperPlaneRightIcon weight="fill" />
+            </Button>
           </form>
         </div>
       </div>
@@ -176,10 +141,13 @@ function AIBookingPageInner() {
   );
 }
 
-// 🔥 Suspense wrapper
 export default function Page() {
   return (
-    <Suspense fallback={<div className="p-10 text-center">Loading AI...</div>}>
+    <Suspense
+      fallback={
+        <div className="flex h-dvh items-center justify-center text-sm text-ink-muted">Loading...</div>
+      }
+    >
       <AIBookingPageInner />
     </Suspense>
   );
