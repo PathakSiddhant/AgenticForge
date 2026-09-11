@@ -7,7 +7,7 @@ import { clerkAppearance } from "@/lib/clerk-appearance";
 export default function SignInPage() {
   return (
     <AuthLayout>
-      <SignIn appearance={clerkAppearance} />
+      <SignIn appearance={clerkAppearance} fallbackRedirectUrl="/dashboard" />
     </AuthLayout>
   );
 }

@@ -5,6 +5,7 @@ import { Toaster } from "sonner";
 import { AgentVisitTracker } from "@/components/agent-visit-tracker";
 import { AppEntrance } from "@/components/app-entrance";
 import { ConfirmProvider } from "@/components/confirm-provider";
+import { ConsoleSignature } from "@/components/console-signature";
 import Sidebar from "@/components/sidebar";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Topbar } from "@/components/topbar";
@@ -64,6 +65,7 @@ export default function RootLayout({
             />
             <AppEntrance />
             <AgentVisitTracker />
+            <ConsoleSignature />
           </ThemeProvider>
         </body>
       </html>

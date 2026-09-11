@@ -4,6 +4,7 @@ import { Command } from "cmdk";
 import {
   FirstAidKitIcon,
   MagnifyingGlassIcon,
+  ShuffleIcon,
   SquaresFourIcon,
   UsersThreeIcon,
 } from "@phosphor-icons/react/dist/ssr";
@@ -18,8 +19,13 @@ import { cn } from "@/lib/utils";
 // lifting state (e.g. the dashboard hero's search button).
 export const OPEN_COMMAND_PALETTE_EVENT = "agenticforge:open-command-palette";
 
+function randomAgent() {
+  return ALL_AGENTS[Math.floor(Math.random() * ALL_AGENTS.length)];
+}
+
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
   const router = useRouter();
   const prefersReducedMotion = useReducedMotion();
 
@@ -44,6 +50,7 @@ export function CommandPalette() {
 
   const go = (href: string) => {
     setOpen(false);
+    setSearch("");
     router.push(href);
   };
 
@@ -88,6 +95,8 @@ export function CommandPalette() {
               <MagnifyingGlassIcon className="size-4 shrink-0 text-ink-subtle" />
               <Command.Input
                 autoFocus
+                value={search}
+                onValueChange={setSearch}
                 placeholder="Search agents, LeadForge, MediForge..."
                 className="h-12 flex-1 bg-transparent text-sm text-ink placeholder:text-ink-subtle outline-none"
               />
@@ -97,8 +106,16 @@ export function CommandPalette() {
             </div>
 
             <Command.List className="max-h-[60vh] overflow-y-auto custom-scrollbar p-2">
-              <Command.Empty className="py-8 text-center text-sm text-ink-muted">
-                No agents match that search.
+              <Command.Empty className="flex flex-col items-center gap-3 px-4 py-10 text-center">
+                <p className="text-sm text-ink-muted">
+                  Nothing matches &ldquo;{search}&rdquo;.
+                </p>
+                <button
+                  onClick={() => go(randomAgent().href)}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-ink-muted transition-colors hover:border-border-strong hover:text-ink"
+                >
+                  <ShuffleIcon className="size-3.5" /> Try a random agent instead
+                </button>
               </Command.Empty>
 
               <Command.Group
@@ -170,6 +187,23 @@ export function CommandPalette() {
                 );
               })}
               </Command.List>
+
+              <div className="flex items-center justify-between border-t border-border px-4 py-2">
+                <div className="flex items-center gap-3 text-[11px] text-ink-subtle">
+                  <span className="flex items-center gap-1">
+                    <kbd className="rounded-sm border border-border px-1 font-mono">&uarr;</kbd>
+                    <kbd className="rounded-sm border border-border px-1 font-mono">&darr;</kbd>
+                    navigate
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <kbd className="rounded-sm border border-border px-1 font-mono">&crarr;</kbd>
+                    select
+                  </span>
+                </div>
+                <span className="text-[11px] text-ink-subtle">
+                  {ALL_AGENTS.length} agents
+                </span>
+              </div>
               </Command>
             </motion.div>
           </motion.div>
