@@ -9,9 +9,9 @@ export function AgentCard({ agent }: { agent: AgentDefinition }) {
   return (
     <Link
       href={agent.href}
-      className="group flex flex-col rounded-md border border-border bg-background p-5 transition-colors hover:border-border-strong hover:bg-surface"
+      className="group flex flex-col rounded-md border border-border bg-background p-5 transition-[transform,background-color,border-color,box-shadow] duration-200 ease-out hover:-translate-y-0.5 hover:border-border-strong hover:bg-surface hover:shadow-[0_4px_16px_-4px_rgb(0_0_0_/_0.08)]"
     >
-      <div className="flex size-10 items-center justify-center rounded-md bg-surface text-ink-muted transition-colors group-hover:bg-accent-tint group-hover:text-accent-ink">
+      <div className="flex size-10 items-center justify-center rounded-md bg-surface text-ink-muted transition-[transform,background-color,color] duration-200 group-hover:scale-105 group-hover:bg-accent-tint group-hover:text-accent-ink">
         <AgentIcon className="size-5" />
       </div>
       <h3 className="mt-4 text-[15px] font-medium text-ink">{agent.name}</h3>

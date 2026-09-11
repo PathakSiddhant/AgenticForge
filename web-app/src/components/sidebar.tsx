@@ -11,6 +11,7 @@ import {
   TerminalIcon,
   UsersThreeIcon,
 } from "@phosphor-icons/react/dist/ssr";
+import { motion } from "motion/react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -48,20 +49,30 @@ function NavLink({
     <Link
       href={href}
       className={cn(
-        "group flex items-center gap-3 rounded-md px-2.5 py-2 text-sm transition-colors",
+        "group relative flex items-center gap-3 rounded-md px-2.5 py-2 text-sm transition-colors",
         collapsed && "justify-center",
         active
           ? accent
-            ? "bg-accent-tint font-medium text-accent-ink"
-            : "bg-surface font-medium text-ink"
+            ? "font-medium text-accent-ink"
+            : "font-medium text-ink"
           : "text-ink-muted hover:bg-surface hover:text-ink"
       )}
     >
+      {active && (
+        <motion.span
+          layoutId="sidebar-active-pill"
+          className={cn(
+            "absolute inset-0 rounded-md",
+            accent ? "bg-accent-tint" : "bg-surface"
+          )}
+          transition={{ type: "spring", stiffness: 500, damping: 35 }}
+        />
+      )}
       <NavIcon
-        className="size-[18px] shrink-0"
+        className="relative z-10 size-4.5 shrink-0"
         weight={active ? "fill" : "regular"}
       />
-      {!collapsed && <span className="truncate">{label}</span>}
+      {!collapsed && <span className="relative z-10 truncate">{label}</span>}
     </Link>
   );
 }
