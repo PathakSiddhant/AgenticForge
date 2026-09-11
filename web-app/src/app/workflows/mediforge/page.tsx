@@ -77,6 +77,11 @@ export default function MediForgeDashboard() {
   const [inputText, setInputText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  // One Gemini chat session per simulator open, not one shared globally
+  // across every visitor - the backend keys its conversation history by
+  // this id. crypto.randomUUID() is browser-only, so it's generated in an
+  // effect rather than a useState initializer (SSR has no crypto global).
+  const [chatSessionId, setChatSessionId] = useState("");
 
   const [callStatus, setCallStatus] = useState<"inactive" | "connecting" | "active">("inactive");
   const vapiRef = useRef<VapiInstance | null>(null);
@@ -88,6 +93,10 @@ export default function MediForgeDashboard() {
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
     return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    setChatSessionId(crypto.randomUUID());
   }, []);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -252,7 +261,7 @@ export default function MediForgeDashboard() {
       const res = await fetch(`${API}/api/mediforge/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMsg }),
+        body: JSON.stringify({ message: userMsg, session_id: chatSessionId }),
       });
       const data = await res.json();
       setMessages((prev) => [...prev, { role: "ai", text: data.reply }]);

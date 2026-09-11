@@ -1,14 +1,25 @@
 # Path: ai-engine/main.py
+import sys
+
+# Several agent modules log with emoji (debug prints, not user-facing).
+# Windows' default console codepage (cp1252) can't encode most of them, so
+# any such print would crash the request with UnicodeEncodeError - force
+# UTF-8 stdio before anything else runs, regardless of platform/console.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 import os
 import json
 import uuid
 import datetime
-import random 
-import string 
+import random
+import string
 import threading  # 🌟 NEW: Added for Background Thread
 import time       # 🌟 NEW: Added for Time delays
 import io         # 🌟 NEW: Added for Excel Export
 import pandas as pd # 🌟 NEW: Added for Excel Export
+from collections import OrderedDict
 import google.generativeai as genai 
 from pinecone import Pinecone 
 from fastapi.staticfiles import StaticFiles
@@ -206,12 +217,30 @@ def health_check():
 # 🌟 ENTERPRISE WORKFLOWS: MEDIFORGE ENDPOINTS
 # ==========================================
 
-# 1. Initialize Global Agent (Preserves Chat History)
-receptionist_agent = MediForgeReceptionist()
+# 1. Per-conversation agent registry (one MediForgeReceptionist per real
+# conversation, not one shared by everyone). A single global instance meant
+# two different patients chatting at the same time would see each other's
+# messages folded into the same Gemini chat history. Keyed by a session id
+# from the web widget, or the WhatsApp sender's number - and bounded/LRU so
+# a long-running server doesn't accumulate sessions forever.
+_MAX_RECEPTIONIST_SESSIONS = 500
+_receptionist_sessions: "OrderedDict[str, MediForgeReceptionist]" = OrderedDict()
+
+def get_receptionist_session(session_id: str) -> MediForgeReceptionist:
+    existing = _receptionist_sessions.get(session_id)
+    if existing is not None:
+        _receptionist_sessions.move_to_end(session_id)
+        return existing
+    agent = MediForgeReceptionist()
+    _receptionist_sessions[session_id] = agent
+    if len(_receptionist_sessions) > _MAX_RECEPTIONIST_SESSIONS:
+        _receptionist_sessions.popitem(last=False)
+    return agent
 
 # 2. Pydantic Models for Input Validation
 class ChatRequest(BaseModel):
     message: str
+    session_id: str
 
 class ManualBooking(BaseModel):
     patient_name: str
@@ -225,8 +254,9 @@ class ManualBooking(BaseModel):
 # 3. Endpoint: AI Chat Simulator
 @app.post("/api/mediforge/chat")
 async def mediforge_chat(request: ChatRequest):
-    """Handles messages from the AI Agent widget"""
-    ai_reply = receptionist_agent.chat(request.message)
+    """Handles messages from the AI Agent widget - one Gemini chat session per browser session_id."""
+    agent = get_receptionist_session(request.session_id)
+    ai_reply = agent.chat(request.message)
     return {"reply": ai_reply}
 
 # 4. Endpoint: Fetch Live Appointments for Dashboard
@@ -355,7 +385,8 @@ def get_doctors():
 async def whatsapp_webhook(Body: str = Form(...), From: str = Form(...)):
     print(f"\n📱 [WHATSAPP MSG] From {From}: {Body}")
     try:
-        ai_reply = receptionist_agent.chat(Body)
+        agent = get_receptionist_session(f"whatsapp:{From}")
+        ai_reply = agent.chat(Body)
         twiml_response = MessagingResponse()
         twiml_response.message(ai_reply)
         return Response(content=str(twiml_response), media_type="application/xml")
