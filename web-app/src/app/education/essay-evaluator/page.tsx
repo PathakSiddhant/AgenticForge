@@ -1,6 +1,14 @@
 "use client";
+
+import { ChalkboardTeacherIcon, LightbulbIcon, WarningIcon } from "@phosphor-icons/react/dist/ssr";
 import { useState } from "react";
-import Link from "next/link";
+
+import { AgentEmptyState, AgentErrorState, AgentHeader, AgentLoadingState, ResultPanel } from "@/components/agent-shell";
+import { Button } from "@/components/ui/button";
+import { Label, Textarea } from "@/components/ui/input";
+import { ALL_AGENTS } from "@/lib/agents";
+
+const agent = ALL_AGENTS.find((a) => a.slug === "essay-evaluator")!;
 
 interface EvaluationData {
   score: number;
@@ -10,9 +18,17 @@ interface EvaluationData {
   improvement_tips: string[];
 }
 
+function scoreTone(score: number) {
+  if (score >= 80) return "text-success";
+  if (score >= 50) return "text-warning";
+  return "text-danger";
+}
+
 export default function EssayEvaluatorDashboard() {
   const [essayText, setEssayText] = useState("");
-  const [criteria, setCriteria] = useState("Grade out of 100. Focus strictly on grammar, flow, and logical arguments. College-level expectation.");
+  const [criteria, setCriteria] = useState(
+    "Grade out of 100. Focus strictly on grammar, flow, and logical arguments. College-level expectation."
+  );
   const [data, setData] = useState<EvaluationData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,7 +36,6 @@ export default function EssayEvaluatorDashboard() {
   const evaluateEssay = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!essayText.trim() || !criteria.trim()) return;
-    
     setLoading(true);
     setError(null);
     setData(null);
@@ -29,173 +44,133 @@ export default function EssayEvaluatorDashboard() {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/education/essay-evaluator`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          essay_text: essayText,
-          grading_criteria: criteria
-        }),
+        body: JSON.stringify({ essay_text: essayText, grading_criteria: criteria }),
       });
-      
       const result = await res.json();
       if (result.error) {
         setError(result.error);
       } else {
         setData(result.evaluation);
       }
-    } catch (err) {
-      setError("AI Engine connection failed. Is your Python server running?");
+    } catch {
+      setError("Couldn't reach the backend. Is ai-engine running?");
     }
-    
     setLoading(false);
   };
 
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return "text-emerald-500";
-    if (score >= 50) return "text-amber-500";
-    return "text-red-500";
-  };
-
   return (
-    <div className="max-w-6xl mx-auto pb-12">
-      <div className="mb-8">
-        <Link href="/education" className="inline-flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 mb-6 transition-colors">
-          <span>←</span> Back to Education
-        </Link>
-        <div className="flex items-center gap-4 mb-4">
-          <div className="w-14 h-14 rounded-2xl bg-amber-100 dark:bg-amber-500/10 flex items-center justify-center text-3xl border border-amber-200 dark:border-amber-500/20">
-            📝
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">AI Essay Evaluator</h1>
-            <p className="text-slate-600 dark:text-slate-400 mt-1">Ruthlessly grade student essays based on your custom criteria.</p>
-          </div>
-        </div>
-      </div>
+    <div className="mx-auto max-w-6xl pb-12">
+      <AgentHeader
+        icon={agent.icon}
+        title={agent.name}
+        description={agent.description}
+        backHref="/education"
+        backLabel="Back to Education"
+      />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        
-        {/* Left Column: Input Panel */}
-        <div className="bg-white dark:bg-[#111] border border-slate-200 dark:border-white/5 rounded-2xl p-6 shadow-sm h-fit">
-          <form onSubmit={evaluateEssay} className="space-y-6">
-            
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="h-fit rounded-lg border border-border bg-background p-6">
+          <form onSubmit={evaluateEssay} className="space-y-5">
             <div>
-              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase tracking-wider">
-                1. Grading Criteria / Rubric
-              </label>
-              <textarea
+              <Label>1. Grading criteria / rubric</Label>
+              <Textarea
                 value={criteria}
                 onChange={(e) => setCriteria(e.target.value)}
-                className="w-full h-24 bg-slate-50 dark:bg-[#141414] border border-slate-200 dark:border-white/10 rounded-xl p-4 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-amber-500/50 resize-none text-sm"
+                className="h-24"
                 disabled={loading}
               />
             </div>
-
             <div>
-              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase tracking-wider">
-                2. Student Essay Text
-              </label>
-              <textarea
+              <Label>2. Student essay text</Label>
+              <Textarea
                 value={essayText}
                 onChange={(e) => setEssayText(e.target.value)}
                 placeholder="Paste the student's essay here..."
-                className="w-full h-64 bg-slate-50 dark:bg-[#141414] border border-slate-200 dark:border-white/10 rounded-xl p-4 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-amber-500/50 resize-none text-sm"
+                className="h-64"
                 disabled={loading}
               />
             </div>
-
-            <button
-              type="submit"
-              disabled={loading || !essayText.trim() || !criteria.trim()}
-              className="w-full bg-amber-600 hover:bg-amber-500 text-white py-4 rounded-xl font-medium transition-colors disabled:opacity-50 flex justify-center items-center gap-2"
-            >
-              {loading ? (
-                <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Grading Essay...</>
-              ) : (
-                "Evaluate & Score Essay"
-              )}
-            </button>
+            <Button type="submit" disabled={loading || !essayText.trim() || !criteria.trim()} className="w-full">
+              {loading ? "Grading essay..." : "Evaluate & score essay"}
+            </Button>
           </form>
-
-          {error && (
-            <div className="mt-4 p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl text-sm text-red-600 dark:text-red-400">
-              {error}
-            </div>
+          {error && !loading && (
+            <p className="mt-4 rounded-md border border-danger/20 bg-danger-tint p-3 text-sm text-danger">{error}</p>
           )}
         </div>
 
-        {/* Right Column: Scorecard Dashboard */}
-        <div className="bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-white/5 rounded-2xl p-6 shadow-inner flex flex-col relative overflow-hidden">
-          {data ? (
-            <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500 z-10 relative">
-              
-              {/* Score & Verdict Row */}
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="bg-white dark:bg-[#111] border border-slate-200 dark:border-white/5 p-5 rounded-xl flex-1 flex flex-col items-center justify-center text-center">
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Final Score</span>
-                  <div className={`text-5xl font-extrabold ${getScoreColor(data.score)}`}>
-                    {data.score}<span className="text-xl text-slate-400">/100</span>
+        <ResultPanel>
+          {loading ? (
+            <AgentLoadingState label="Grading essay..." />
+          ) : error ? (
+            <AgentErrorState message={error} />
+          ) : data ? (
+            <div className="space-y-5">
+              <div className="flex flex-col gap-4 sm:flex-row">
+                <div className="flex flex-1 flex-col items-center justify-center rounded-md border border-border bg-background p-5 text-center">
+                  <span className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-subtle">
+                    Final score
+                  </span>
+                  <div className={`text-4xl font-semibold ${scoreTone(data.score)}`}>
+                    {data.score}
+                    <span className="text-lg text-ink-subtle">/100</span>
                   </div>
                 </div>
-                
-                <div className="bg-white dark:bg-[#111] border border-slate-200 dark:border-white/5 p-5 rounded-xl flex-2 flex flex-col justify-center">
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Overall Verdict</span>
-                  <p className="text-sm text-slate-700 dark:text-slate-300 font-medium">
-                    {data.overall_verdict}
-                  </p>
+                <div className="flex flex-2 flex-col justify-center rounded-md border border-border bg-background p-5">
+                  <span className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-subtle">
+                    Overall verdict
+                  </span>
+                  <p className="text-sm font-medium text-ink">{data.overall_verdict}</p>
                 </div>
               </div>
 
-              {/* Grammar & Spelling */}
-              <div className="bg-red-50/50 dark:bg-red-900/10 border border-red-100 dark:border-red-500/20 rounded-xl p-4">
-                <h4 className="text-red-700 dark:text-red-400 font-bold text-sm mb-3 flex items-center gap-2">
-                  <span>🚨</span> Grammar & Spelling Errors
+              <div className="rounded-md border border-danger/20 bg-danger-tint p-4">
+                <h4 className="mb-3 flex items-center gap-2 text-sm font-medium text-danger">
+                  <WarningIcon weight="fill" /> Grammar &amp; spelling
                 </h4>
                 {data.grammar_and_spelling.length > 0 ? (
-                  <ul className="space-y-2">
+                  <ul className="space-y-1.5">
                     {data.grammar_and_spelling.map((err, i) => (
-                      <li key={i} className="text-slate-700 dark:text-slate-300 text-sm flex items-start gap-2">
-                        <span className="text-red-500 mt-0.5">•</span> {err}
+                      <li key={i} className="text-sm text-ink">
+                        &bull; {err}
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-sm text-emerald-600 dark:text-emerald-400 italic font-medium">No major grammatical errors found! Excellent work.</p>
+                  <p className="text-sm italic text-success">No major grammatical errors found.</p>
                 )}
               </div>
 
-              {/* Structural Feedback */}
               <div>
-                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Structural Feedback</h3>
-                <div className="bg-white dark:bg-[#1a1a1a] border border-slate-200 dark:border-white/5 p-4 rounded-xl text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-subtle">
+                  Structural feedback
+                </h3>
+                <p className="rounded-md border border-border bg-background p-4 text-sm leading-relaxed text-ink">
                   {data.structural_feedback}
-                </div>
+                </p>
               </div>
 
-              {/* Improvement Tips */}
-              <div className="bg-amber-50/50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-500/20 rounded-xl p-4">
-                <h4 className="text-amber-700 dark:text-amber-400 font-bold text-sm mb-3 flex items-center gap-2">
-                  <span>💡</span> Actionable Tips to Improve
+              <div className="rounded-md border border-accent-tint-border bg-accent-tint p-4">
+                <h4 className="mb-3 flex items-center gap-2 text-sm font-medium text-accent-ink">
+                  <LightbulbIcon weight="fill" /> Actionable tips
                 </h4>
-                <ul className="space-y-2">
+                <ul className="space-y-1.5">
                   {data.improvement_tips.map((tip, i) => (
-                    <li key={i} className="text-slate-700 dark:text-slate-300 text-sm flex items-start gap-2">
-                      <span className="text-amber-500 font-bold mt-0.5">{i+1}.</span> {tip}
+                    <li key={i} className="text-sm text-ink">
+                      {i + 1}. {tip}
                     </li>
                   ))}
                 </ul>
               </div>
-
             </div>
           ) : (
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-10 z-0">
-              <div className="w-20 h-20 mb-4 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-4xl grayscale opacity-50">
-                👨‍🏫
-              </div>
-              <h3 className="text-lg font-bold text-slate-500 dark:text-slate-400">Awaiting Essay</h3>
-              <p className="text-slate-400 dark:text-slate-500 text-sm max-w-xs mt-2">Paste a student&apos;s essay to generate an automated, objective scorecard.</p>
-            </div>
+            <AgentEmptyState
+              icon={ChalkboardTeacherIcon}
+              title="Awaiting essay"
+              description="Paste a student's essay to generate an automated scorecard."
+            />
           )}
-        </div>
-
+        </ResultPanel>
       </div>
     </div>
   );
