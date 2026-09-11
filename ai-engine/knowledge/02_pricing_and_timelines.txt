@@ -1,0 +1,155 @@
+AgenticForge: Internal Pricing & SLA Rulebook
+
+DOCUMENT CLASSIFICATION: CONFIDENTIAL - INTERNAL SALES & REV-OPS USE ONLY
+AUTHOR: Head of Sales, AgenticForge
+EFFECTIVE DATE: Q1 2026
+
+1. Guiding Philosophy: Selling Elite Architecture
+
+Team, as we scale AgenticForge, our positioning in the market must remain uncompromising. We are not selling a $99/month SaaS subscription; we are selling bespoke, enterprise-grade digital infrastructure. We build autonomous workforces. Our pricing, SLAs, and sales motions must reflect the elite nature of our engineering and the massive ROI our systems generate for our clients.
+
+This document outlines the hard rules for pricing our core services (LeadForge, MediForge, Custom RAG, and Workflow Automation), our engagement timelines, and our service guarantees. Deviation from this rulebook requires direct approval from the executive team.
+
+2. The "No Free Trial" Doctrine
+
+Rule #1: AgenticForge DOES NOT do free trials. Ever.
+
+We build custom multi-agent systems that require deep integration into a client’s proprietary data and legacy infrastructure. To offer a "free trial" is to fundamentally devalue our engineering hours and misrepresent the complexity of our work.
+
+The Alternative: The Free 30-Minute Architecture Review
+Instead of free trials, our primary top-of-funnel conversion mechanism is the 30-Minute Architecture Review.
+
+What it is: A highly technical, consultative call where we map out their current manual bottlenecks (e.g., SDR workflow, front-desk triage) and design a high-level schematic of how an AgenticForge system would automate it.
+
+The Goal: Demonstrate our deep technical expertise and establish trust. By the end of the 30 minutes, the prospect should clearly understand the exact tech stack (e.g., n8n + Pinecone + GPT-4o) required to solve their problem.
+
+Actionable Outcome: Transition directly from the Architecture Review into proposing a paid Discovery & Setup phase.
+
+3. Standardized Pricing Tiers
+
+To streamline the sales cycle while maintaining high margins, we have standardized our offerings into three distinct tiers. While custom scoping is required for Enterprise, Starter and Growth packages are strictly bounded.
+
+Tier 1: The Starter Package
+
+Pricing: $1,000 / month Retainer (Zero Setup Fee)
+Target Audience: Smaller B2B firms or single-department use cases needing basic automation.
+
+What it includes:
+
+Deployment of 1 basic, single-purpose AI Agent (e.g., a standard internal HR policy bot or a basic website Q&A widget).
+
+Up to 2 standard API integrations (e.g., Slack and standard email).
+
+Basic RAG capability (up to 50 documents ingested).
+
+Standard business hours email support (48-hour SLA).
+
+Limitations: No complex decision trees, no live CRM bi-directional syncing, no custom API development.
+
+Strategic Purpose: This is our foot-in-the-door tier. It proves immediate value so we can upsell to Growth within 6 months.
+
+Tier 2: The Growth Package (The Core Offering)
+
+Pricing: $5,000 Setup Fee + $2,500 / month Retainer
+Target Audience: Scaling SaaS, mid-sized Healthcare clinics, and Real Estate brokerages.
+
+What it includes:
+
+The Setup ($5k): Full architectural mapping, data ingestion, and deployment of a complex, multi-agent system (e.g., a full LeadForge SDR buildout or MediForge Receptionist).
+
+Deep bi-directional CRM integration (Salesforce, HubSpot, or custom EHR).
+
+Advanced RAG implementation (up to 1,000 documents) with semantic search optimization.
+
+Up to 5 complex n8n automated workflows.
+
+The Retainer ($2.5k/mo): * Continuous prompt engineering and model optimization.
+
+Dedicated shared Slack channel for priority support.
+
+Monthly performance and ROI reporting calls.
+
+Vector database maintenance and document re-indexing.
+
+Strategic Purpose: This is our primary revenue driver. The setup fee covers our upfront engineering sprint, and the retainer ensures high-margin recurring revenue while keeping the system optimized.
+
+Tier 3: The Enterprise Deployment
+
+Pricing: $15,000+ Setup Fee + Custom Monthly Retainer (Min. $5,000/mo)
+Target Audience: Large enterprises requiring wall-to-wall automation and strict compliance.
+
+What it includes:
+
+Unlimited AI Agents tailored to multiple departments (Sales, Support, Ops).
+
+Bespoke middleware development for legacy, on-premise systems.
+
+Advanced security configurations (SOC2/HIPAA compliance architectures, PII redaction pipelines).
+
+Model fine-tuning (training open-source models like Llama 3 specifically on their proprietary data).
+
+Self-hosted infrastructure options (deploying n8n and vector databases within their own AWS/GCP Virtual Private Cloud).
+
+24/7/365 dedicated Account Manager and lead engineer access.
+
+Sales Requirement: All Enterprise deals require a fully scoped Statement of Work (SOW) approved by the VP of Engineering before a contract is sent.
+
+4. Engagement and Deployment Timelines
+
+Expectation management is critical to client retention. Sales reps must adhere to the following timeline commitments when drafting contracts:
+
+Basic Chatbots & Single-Agent Systems (Starter Tier): 1-2 Weeks.
+
+Week 1: Knowledge base ingestion and prompt drafting.
+
+Week 2: Testing, UI embedding, and handover.
+
+Full AI CRM Integrations & Multi-Agent Workflows (Growth Tier): 4-8 Weeks.
+
+Weeks 1-2: Discovery, API credential gathering, and blueprinting.
+
+Weeks 3-4: RAG pipeline construction and initial CRM webhook integration via n8n.
+
+Weeks 5-6: Agent persona tuning, edge-case handling, and rigorous internal QA.
+
+Weeks 7-8: Client User Acceptance Testing (UAT), shadow-mode deployment, and final go-live.
+
+Enterprise Deployments: 8-12+ Weeks. (To be defined specifically in the SOW).
+
+Never promise a timeline shorter than these minimums without explicit engineering approval.
+
+5. Service Level Agreement (SLA) & Uptime Guarantees
+
+As we are managing mission-critical infrastructure for our clients, our SLA is legally binding. Ensure clients understand exactly what we guarantee.
+
+The 99.9% Uptime Guarantee
+
+AgenticForge guarantees 99.9% uptime for all infrastructure fully controlled by us (e.g., our hosted n8n instances, our middleware servers, and our vector databases).
+
+The "Third-Party Outage" Clause: We do not penalize our SLA for outages caused by underlying foundation models (e.g., an OpenAI API crash or Anthropic downtime) or the client's own CRM going offline.
+However, for Growth and Enterprise clients, our systems are built with Fallback Routing. If GPT-4 fails, our n8n routers will automatically reroute the request to Claude 3.5 Sonnet to ensure the client's operations do not cease. This resilience is a key selling point.
+
+Support Response Times
+
+Severity 1 (Critical - System Down): 1-hour response time, 24/7 (Growth/Enterprise).
+
+Severity 2 (High - Core feature broken, system functional): 4-hour response time, business hours.
+
+Severity 3 (Low - Minor bug, UI tweak, or new feature request): 24 to 48-hour response time.
+
+6. API Billing Structure
+
+LLM token generation, vector storage, and telecom (voice/SMS) API costs can scale unpredictably. We manage this via a strict API billing structure to protect our margins.
+
+Option A: The Pass-Through + Management Fee (Default)
+AgenticForge hosts all APIs (OpenAI, Pinecone, Twilio, Make/n8n) under our master accounts. At the end of the month, the exact API usage is calculated and billed to the client with a 20% Management Margin.
+Pitch this as: "We handle all vendor billing, rate-limit management, and API key security so your finance team only deals with one invoice."
+
+Option B: Client-Provided Keys (Enterprise Only)
+For Enterprise clients with strict data governance or pre-existing enterprise agreements with OpenAI/Microsoft, the client provisions their own API keys and injects them securely into our environment. They pay the API providers directly. AgenticForge charges zero markup, but the client is responsible for managing their own rate limits and vendor payments.
+
+7. Final Directives
+
+Sales team: Your job is to sell outcomes, not code. You are selling the elimination of administrative bloat, the doubling of sales pipelines, and the eradication of missed patient calls. Use this rulebook to anchor your negotiations in confidence. Protect our time, enforce our minimums, and let's go build the autonomous enterprise.
+
+Sell the architecture. Defend the margin.

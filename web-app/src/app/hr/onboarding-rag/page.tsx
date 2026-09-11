@@ -1,11 +1,27 @@
 "use client";
-import { useState, useRef } from "react";
-import Link from "next/link";
+
+import { BookmarkSimpleIcon, CheckCircleIcon, ChatTeardropTextIcon } from "@phosphor-icons/react/dist/ssr";
+import { useRef, useState } from "react";
+
+import { AgentEmptyState, AgentErrorState, AgentHeader, AgentLoadingState, ResultPanel } from "@/components/agent-shell";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input, Label } from "@/components/ui/input";
+import { ALL_AGENTS } from "@/lib/agents";
+
+const agent = ALL_AGENTS.find((a) => a.slug === "onboarding-rag")!;
 
 interface OnboardingData {
   answer: string;
   policy_reference: string;
   confidence: string;
+}
+
+function confidenceVariant(level: string): "success" | "warning" | "danger" {
+  const l = level.toLowerCase();
+  if (l.includes("high")) return "success";
+  if (l.includes("medium")) return "warning";
+  return "danger";
 }
 
 export default function OnboardingRagDashboard() {
@@ -14,15 +30,15 @@ export default function OnboardingRagDashboard() {
   const [data, setData] = useState<OnboardingData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [uploadStatus, setUploadStatus] = useState<string>("");
-  
+  const [uploadStatus, setUploadStatus] = useState("");
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
       if (selectedFile.type !== "application/pdf") {
-        setError("Bhai, PDF file hi upload karni hai!");
+        setError("Please upload a valid PDF file.");
         setFile(null);
         return;
       }
@@ -34,177 +50,122 @@ export default function OnboardingRagDashboard() {
   const askAssistant = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim() || !file) return;
-    
     setLoading(true);
     setError(null);
     setData(null);
-    setUploadStatus("Reading Company Policy PDF...");
+    setUploadStatus("Reading company manual...");
 
     try {
       const formData = new FormData();
       formData.append("query", query);
       formData.append("file", file);
 
-      const aiRes = await fetch("https://agenticforge.onrender.com/api/hr/onboarding-rag", {
+      const aiRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/hr/onboarding-rag`, {
         method: "POST",
         body: formData,
       });
-      
       const result = await aiRes.json();
       if (result.error) {
         setError(result.error);
       } else {
         setData(result.response);
       }
-    } catch (err: any) {
-      setError("AI Engine se connect nahi ho paya. Is your Python server running?");
+    } catch {
+      setError("Couldn't reach the backend. Is ai-engine running?");
     }
-    
     setLoading(false);
     setUploadStatus("");
   };
 
-  const getConfidenceColor = (level: string) => {
-    const l = level.toLowerCase();
-    if (l.includes("high")) return "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/30";
-    if (l.includes("medium")) return "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400 border-amber-200 dark:border-amber-500/30";
-    return "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400 border-red-200 dark:border-red-500/30";
-  };
-
   return (
-    <div className="max-w-6xl mx-auto pb-12">
-      <div className="mb-8">
-        <Link href="/hr" className="inline-flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 mb-6 transition-colors">
-          <span>←</span> Back to HR
-        </Link>
-        <div className="flex items-center gap-4 mb-4">
-          <div className="w-14 h-14 rounded-2xl bg-teal-100 dark:bg-teal-500/10 flex items-center justify-center text-3xl border border-teal-200 dark:border-teal-500/20">
-            👋
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Onboarding RAG Bot</h1>
-            <p className="text-slate-600 dark:text-slate-400 mt-1">Instant policy answers extracted directly from your company&apos;s official handbook.</p>
-          </div>
-        </div>
-      </div>
+    <div className="mx-auto max-w-6xl pb-12">
+      <AgentHeader
+        icon={agent.icon}
+        title={agent.name}
+        description={agent.description}
+        backHref="/hr"
+        backLabel="Back to HR"
+      />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        
-        {/* Left Column: Input Panel */}
-        <div className="bg-white dark:bg-[#111] border border-slate-200 dark:border-white/5 rounded-2xl p-6 shadow-sm h-fit">
-          <form onSubmit={askAssistant} className="space-y-6">
-            
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="h-fit rounded-lg border border-border bg-background p-6">
+          <form onSubmit={askAssistant} className="space-y-5">
             <div>
-              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase tracking-wider">
-                1. Upload Company Manual (PDF)
-              </label>
-              <div 
+              <Label>1. Upload company manual (PDF)</Label>
+              <div
                 onClick={() => fileInputRef.current?.click()}
-                className={`w-full h-32 border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer transition-colors ${file ? 'border-teal-500 bg-teal-50 dark:bg-teal-900/10' : 'border-slate-300 dark:border-white/10 hover:border-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/10'}`}
+                className={`flex h-32 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed transition-colors ${file ? "border-success bg-success-tint" : "border-border hover:border-accent hover:bg-accent-tint"}`}
               >
-                <input 
-                  type="file" 
+                <input
+                  type="file"
                   accept="application/pdf"
-                  className="hidden" 
+                  className="hidden"
                   ref={fileInputRef}
                   onChange={handleFileChange}
                 />
                 {file ? (
-                  <div className="text-center px-4">
-                    <span className="text-teal-500 text-3xl block mb-2">✓</span>
-                    <p className="text-sm font-bold text-slate-700 dark:text-slate-300 truncate w-48">{file.name}</p>
+                  <div className="px-4 text-center">
+                    <CheckCircleIcon className="mx-auto mb-2 size-6 text-success" weight="fill" />
+                    <p className="w-48 truncate text-sm font-medium text-ink">{file.name}</p>
                   </div>
                 ) : (
-                  <div className="text-center text-slate-500">
-                    <span className="text-3xl block mb-2">📘</span>
-                    <p className="text-sm font-medium">Click to upload Policy PDF</p>
-                  </div>
+                  <p className="text-sm font-medium text-ink-subtle">Click to upload policy PDF</p>
                 )}
               </div>
             </div>
-
             <div>
-              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase tracking-wider">
-                2. Employee Query
-              </label>
-              <input
-                type="text"
+              <Label>2. Employee query</Label>
+              <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="e.g., How many sick leaves do I get in a year?"
-                className="w-full bg-slate-50 dark:bg-[#141414] border border-slate-200 dark:border-white/10 rounded-xl p-4 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-teal-500/50 text-sm"
+                placeholder="e.g. How many sick leaves do I get in a year?"
                 disabled={loading}
               />
             </div>
-
-            <button
-              type="submit"
-              disabled={loading || !query.trim() || !file}
-              className="w-full bg-teal-600 hover:bg-teal-500 text-white py-4 rounded-xl font-medium transition-colors disabled:opacity-50 flex justify-center items-center gap-2"
-            >
-              {loading ? (
-                <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> {uploadStatus}</>
-              ) : (
-                "Ask HR Assistant"
-              )}
-            </button>
+            <Button type="submit" disabled={loading || !query.trim() || !file} className="w-full">
+              {loading ? uploadStatus || "Thinking..." : "Ask HR assistant"}
+            </Button>
           </form>
-
-          {error && (
-            <div className="mt-4 p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl text-sm text-red-600 dark:text-red-400">
+          {error && !loading && (
+            <p className="mt-4 rounded-md border border-danger/20 bg-danger-tint p-3 text-sm text-danger">
               {error}
-            </div>
+            </p>
           )}
         </div>
 
-        {/* Right Column: AI Assistant Answer */}
-        <div className="bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-white/5 rounded-2xl p-6 shadow-inner flex flex-col relative overflow-hidden">
-          {data ? (
-            <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500 z-10 relative h-full flex flex-col">
-              
-              <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-white/10">
-                <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <span>🤖</span> AI Response
+        <ResultPanel>
+          {loading ? (
+            <AgentLoadingState label={uploadStatus || "Searching the manual..."} />
+          ) : error ? (
+            <AgentErrorState message={error} />
+          ) : data ? (
+            <div className="space-y-5">
+              <div className="flex items-center justify-between border-b border-border pb-4">
+                <h2 className="flex items-center gap-2 text-sm font-medium text-ink">
+                  <ChatTeardropTextIcon /> AI response
                 </h2>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-500 uppercase">Confidence:</span>
-                  <span className={`px-3 py-1 text-xs font-bold rounded-full border ${getConfidenceColor(data.confidence)}`}>
-                    {data.confidence}
-                  </span>
-                </div>
+                <Badge variant={confidenceVariant(data.confidence)}>{data.confidence} confidence</Badge>
               </div>
-
-              {/* The Answer Box */}
-              <div className="flex-1">
-                <div className="bg-white dark:bg-[#1a1a1a] border border-slate-200 dark:border-white/5 p-5 rounded-xl mb-4 relative">
-                  <div className="absolute -left-2 -top-2 w-6 h-6 bg-teal-500 rounded-full flex items-center justify-center text-white text-xs shadow-lg">HR</div>
-                  <p className="text-slate-800 dark:text-slate-200 leading-relaxed text-sm mt-2">
-                    {data.answer}
-                  </p>
-                </div>
-
-                {/* Policy Reference Box */}
-                <div className="bg-teal-50/50 dark:bg-teal-900/10 border border-teal-100 dark:border-teal-500/20 rounded-xl p-4">
-                  <h4 className="text-teal-700 dark:text-teal-400 font-bold text-xs uppercase tracking-widest mb-2 flex items-center gap-2">
-                    <span>📑</span> Official Policy Reference
-                  </h4>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 italic border-l-2 border-teal-300 dark:border-teal-700 pl-3">
-                    &quot;{data.policy_reference}&quot;
-                  </p>
-                </div>
+              <p className="rounded-md border border-border bg-background p-4 text-sm leading-relaxed text-ink">
+                {data.answer}
+              </p>
+              <div className="rounded-md border border-accent-tint-border bg-accent-tint p-4">
+                <h4 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-accent-ink">
+                  <BookmarkSimpleIcon weight="fill" /> Official policy reference
+                </h4>
+                <p className="border-l-2 border-accent-tint-border pl-3 text-sm italic text-ink-muted">
+                  &quot;{data.policy_reference}&quot;
+                </p>
               </div>
-
             </div>
           ) : (
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-10 z-0">
-              <div className="w-20 h-20 mb-4 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-4xl grayscale opacity-50">
-                💬
-              </div>
-              <h3 className="text-lg font-bold text-slate-500 dark:text-slate-400">Ready to Help</h3>
-              <p className="text-slate-400 dark:text-slate-500 text-sm max-w-xs mt-2">Upload the company manual and ask your query to get instant, policy-backed answers.</p>
-            </div>
+            <AgentEmptyState
+              icon={ChatTeardropTextIcon}
+              title="Ready to help"
+              description="Upload the company manual and ask a question for a policy-backed answer."
+            />
           )}
-        </div>
+        </ResultPanel>
       </div>
     </div>
   );

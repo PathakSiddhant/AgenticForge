@@ -1,11 +1,27 @@
 "use client";
+
+import { RobotIcon, TargetIcon, TrendUpIcon } from "@phosphor-icons/react/dist/ssr";
 import { useState } from "react";
-import Link from "next/link";
+
+import { AgentEmptyState, AgentErrorState, AgentHeader, AgentLoadingState, ResultPanel } from "@/components/agent-shell";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input, Label, Textarea } from "@/components/ui/input";
+import { ALL_AGENTS } from "@/lib/agents";
+
+const agent = ALL_AGENTS.find((a) => a.slug === "earnings-rag")!;
 
 interface EarningsData {
   direct_answer: string;
   extracted_metrics: string[];
   confidence_level: string;
+}
+
+function confidenceVariant(level: string): "success" | "warning" | "danger" {
+  const l = level.toLowerCase();
+  if (l.includes("high")) return "success";
+  if (l.includes("medium")) return "warning";
+  return "danger";
 }
 
 export default function EarningsRagDashboard() {
@@ -18,171 +34,126 @@ export default function EarningsRagDashboard() {
   const analyzeDocument = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!documentText.trim() || !query.trim()) return;
-    
     setLoading(true);
     setError(null);
     setData(null);
 
     try {
-      const res = await fetch("https://agenticforge.onrender.com/api/finance/earnings-rag", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/finance/earnings-rag`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          document_text: documentText,
-          query: query
-        }),
+        body: JSON.stringify({ document_text: documentText, query }),
       });
-      
       const result = await res.json();
       if (result.error) {
         setError(result.error);
       } else {
         setData(result.analysis);
       }
-    } catch (err) {
-      setError("Backend connection failed. Is your Python server running?");
+    } catch {
+      setError("Couldn't reach the backend. Is ai-engine running?");
     }
-    
     setLoading(false);
   };
 
-  const getConfidenceColor = (level: string) => {
-    const l = level.toLowerCase();
-    if (l.includes("high")) return "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/30";
-    if (l.includes("medium")) return "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400 border-amber-200 dark:border-amber-500/30";
-    return "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400 border-red-200 dark:border-red-500/30";
-  };
-
   return (
-    <div className="max-w-6xl mx-auto pb-12">
-      {/* Header Section */}
-      <div className="mb-8">
-        <Link href="/finance" className="inline-flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 mb-6 transition-colors">
-          <span>←</span> Back to Finance
-        </Link>
-        <div className="flex items-center gap-4 mb-4">
-          <div className="w-14 h-14 rounded-2xl bg-indigo-100 dark:bg-indigo-500/10 flex items-center justify-center text-3xl border border-indigo-200 dark:border-indigo-500/20">
-            🧾
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Earnings Report RAG</h1>
-            <p className="text-slate-600 dark:text-slate-400 mt-1">AI Auditor: Extracts strict answers and key financial metrics directly from text excerpts.</p>
-          </div>
-        </div>
-      </div>
+    <div className="mx-auto max-w-6xl pb-12">
+      <AgentHeader
+        icon={agent.icon}
+        title={agent.name}
+        description={agent.description}
+        backHref="/finance"
+        backLabel="Back to Finance"
+      />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        
-        {/* Left Column: Input Panel */}
-        <div className="bg-white dark:bg-[#111] border border-slate-200 dark:border-white/5 rounded-2xl p-6 shadow-sm h-fit">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="h-fit rounded-lg border border-border bg-background p-6">
           <form onSubmit={analyzeDocument} className="space-y-5">
             <div>
-              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase tracking-wider">
-                1. Financial Document Excerpt
-              </label>
-              <textarea
+              <Label>1. Financial document excerpt</Label>
+              <Textarea
                 value={documentText}
                 onChange={(e) => setDocumentText(e.target.value)}
-                placeholder="Paste earnings report paragraph here (e.g., 'In Q3, total revenue was $5.2 billion, an increase of 12% year-over-year...')"
-                className="w-full h-48 bg-slate-50 dark:bg-[#141414] border border-slate-200 dark:border-white/10 rounded-xl p-4 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500/50 resize-none text-sm"
+                placeholder="Paste an earnings report paragraph here (e.g. 'In Q3, total revenue was $5.2 billion, up 12% year-over-year...')"
+                className="h-48"
                 disabled={loading}
               />
             </div>
-
             <div>
-              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase tracking-wider">
-                2. Your Audit Query
-              </label>
-              <input
-                type="text"
+              <Label>2. Your audit query</Label>
+              <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="e.g., What was the total revenue and how much did it grow?"
-                className="w-full bg-slate-50 dark:bg-[#141414] border border-slate-200 dark:border-white/10 rounded-xl p-4 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500/50 text-sm"
+                placeholder="e.g. What was the total revenue and how much did it grow?"
                 disabled={loading}
               />
             </div>
-
-            <button
-              type="submit"
-              disabled={loading || !documentText.trim() || !query.trim()}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-4 rounded-xl font-medium transition-colors disabled:opacity-50 flex justify-center items-center gap-2"
-            >
-              {loading ? (
-                <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Extracting Insights...</>
-              ) : (
-                "Run AI Audit"
-              )}
-            </button>
+            <Button type="submit" disabled={loading || !documentText.trim() || !query.trim()} className="w-full">
+              {loading ? "Extracting insights..." : "Run AI audit"}
+            </Button>
           </form>
-
-          {error && (
-            <div className="mt-4 p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl text-sm text-red-600 dark:text-red-400">
+          {error && !loading && (
+            <p className="mt-4 rounded-md border border-danger/20 bg-danger-tint p-3 text-sm text-danger">
               {error}
-            </div>
+            </p>
           )}
         </div>
 
-        {/* Right Column: Results Dashboard */}
-        <div className="bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-white/5 rounded-2xl p-6 shadow-inner flex flex-col relative overflow-hidden">
-          
-          {data ? (
-            <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500 z-10 relative">
-              
-              {/* Header Info */}
-              <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-white/10">
-                <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <span>🎯</span> Audit Results
+        <ResultPanel>
+          {loading ? (
+            <AgentLoadingState label="Auditing document..." />
+          ) : error ? (
+            <AgentErrorState message={error} />
+          ) : data ? (
+            <div className="space-y-5">
+              <div className="flex items-center justify-between border-b border-border pb-4">
+                <h2 className="flex items-center gap-2 text-sm font-medium text-ink">
+                  <TargetIcon /> Audit results
                 </h2>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-500 uppercase">Confidence:</span>
-                  <span className={`px-3 py-1 text-xs font-bold rounded-full border ${getConfidenceColor(data.confidence_level)}`}>
-                    {data.confidence_level}
-                  </span>
-                </div>
+                <Badge variant={confidenceVariant(data.confidence_level)}>
+                  {data.confidence_level} confidence
+                </Badge>
               </div>
 
-              {/* Direct Answer */}
               <div>
-                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Direct Answer</h3>
-                <div className="bg-white dark:bg-[#1a1a1a] border border-slate-200 dark:border-white/5 p-5 rounded-xl">
-                  <p className="text-slate-800 dark:text-slate-200 leading-relaxed text-sm">
-                    {data.direct_answer}
-                  </p>
-                </div>
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-subtle">
+                  Direct answer
+                </h3>
+                <p className="rounded-md border border-border bg-background p-4 text-sm leading-relaxed text-ink">
+                  {data.direct_answer}
+                </p>
               </div>
 
-              {/* Extracted Metrics */}
               <div>
-                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Key Metrics Extracted</h3>
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-subtle">
+                  Key metrics extracted
+                </h3>
                 {data.extracted_metrics && data.extracted_metrics.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {data.extracted_metrics.map((metric, i) => (
-                      <div key={i} className="bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 text-indigo-700 dark:text-indigo-400 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2">
-                        <span className="text-indigo-400">📈</span> {metric}
-                      </div>
+                      <span
+                        key={i}
+                        className="flex items-center gap-1.5 rounded-md border border-accent-tint-border bg-accent-tint px-3 py-1.5 text-sm font-medium text-accent-ink"
+                      >
+                        <TrendUpIcon className="size-3.5" /> {metric}
+                      </span>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-slate-500 italic bg-white dark:bg-[#1a1a1a] border border-slate-200 dark:border-white/5 p-4 rounded-xl">
+                  <p className="rounded-md border border-border bg-background p-4 text-sm italic text-ink-muted">
                     No specific numbers or metrics found to answer this query.
                   </p>
                 )}
               </div>
-
             </div>
           ) : (
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-10 z-0">
-              <div className="w-20 h-20 mb-4 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-4xl grayscale opacity-50">
-                🤖
-              </div>
-              <h3 className="text-lg font-bold text-slate-500 dark:text-slate-400">Awaiting Document</h3>
-              <p className="text-slate-400 dark:text-slate-500 text-sm max-w-xs mt-2">Provide a financial excerpt and ask a query to see the AI auditor extract facts and figures.</p>
-            </div>
+            <AgentEmptyState
+              icon={RobotIcon}
+              title="Awaiting document"
+              description="Provide a financial excerpt and a query to extract facts and figures."
+            />
           )}
-
-        </div>
-
+        </ResultPanel>
       </div>
     </div>
   );

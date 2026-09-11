@@ -1,12 +1,28 @@
 "use client";
+
+import { CopyIcon, PenNibIcon, PaperPlaneTiltIcon, TargetIcon } from "@phosphor-icons/react/dist/ssr";
 import { useState } from "react";
-import Link from "next/link";
+import { toast } from "sonner";
+
+import { AgentEmptyState, AgentErrorState, AgentHeader, AgentLoadingState, ResultPanel } from "@/components/agent-shell";
+import { Button } from "@/components/ui/button";
+import { Label, Select, Textarea } from "@/components/ui/input";
+import { ALL_AGENTS } from "@/lib/agents";
+
+const agent = ALL_AGENTS.find((a) => a.slug === "cold-outreach")!;
 
 interface OutreachData {
   subject_lines: string[];
   email_body: string;
   personalization_angle: string;
   spam_score_warning: string;
+}
+
+function spamTone(score: string) {
+  const s = score.toLowerCase();
+  if (s.includes("low")) return "border-success/20 bg-success-tint text-success";
+  if (s.includes("medium")) return "border-warning/20 bg-warning-tint text-warning";
+  return "border-danger/20 bg-danger-tint text-danger";
 }
 
 export default function ColdOutreachDashboard() {
@@ -20,195 +36,151 @@ export default function ColdOutreachDashboard() {
   const generateEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!prospectInfo.trim() || !ourProduct.trim()) return;
-    
     setLoading(true);
     setError(null);
     setData(null);
 
     try {
-      const res = await fetch("https://agenticforge.onrender.com/api/sales/cold-outreach", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/sales/cold-outreach`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          prospect_info: prospectInfo,
-          our_product: ourProduct,
-          tone: tone
-        }),
+        body: JSON.stringify({ prospect_info: prospectInfo, our_product: ourProduct, tone }),
       });
-      
       const result = await res.json();
       if (result.error) {
         setError(result.error);
       } else {
         setData(result.campaign);
       }
-    } catch (err) {
-      setError("AI Engine connection failed. Check if Python is running.");
+    } catch {
+      setError("Couldn't reach the backend. Is ai-engine running?");
     }
-    
     setLoading(false);
   };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    alert("Copied to clipboard!");
-  };
-
-  const getSpamScoreColor = (score: string) => {
-    const s = score.toLowerCase();
-    if (s.includes("low")) return "text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20";
-    if (s.includes("medium")) return "text-amber-500 bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20";
-    return "text-red-500 bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/20";
+    toast.success("Copied to clipboard.");
   };
 
   return (
-    <div className="max-w-6xl mx-auto pb-12">
-      <div className="mb-8">
-        <Link href="/sales" className="inline-flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 mb-6 transition-colors">
-          <span>←</span> Back to Sales
-        </Link>
-        <div className="flex items-center gap-4 mb-4">
-          <div className="w-14 h-14 rounded-2xl bg-orange-100 dark:bg-orange-500/10 flex items-center justify-center text-3xl border border-orange-200 dark:border-orange-500/20">
-            ✉️
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Cold Outreach Architect</h1>
-            <p className="text-slate-600 dark:text-slate-400 mt-1">Generate non-spammy, highly personalized B2B emails that actually get replies.</p>
-          </div>
-        </div>
-      </div>
+    <div className="mx-auto max-w-6xl pb-12">
+      <AgentHeader
+        icon={agent.icon}
+        title={agent.name}
+        description={agent.description}
+        backHref="/sales"
+        backLabel="Back to Sales"
+      />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        
-        {/* Left Column: Input Panel */}
-        <div className="bg-white dark:bg-[#111] border border-slate-200 dark:border-white/5 rounded-2xl p-6 shadow-sm h-fit">
-          <form onSubmit={generateEmail} className="space-y-6">
-            
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="h-fit rounded-lg border border-border bg-background p-6">
+          <form onSubmit={generateEmail} className="space-y-5">
             <div>
-              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase tracking-wider">
-                1. Prospect Context (Target)
-              </label>
-              <textarea
+              <Label>1. Prospect context (target)</Label>
+              <Textarea
                 value={prospectInfo}
                 onChange={(e) => setProspectInfo(e.target.value)}
-                placeholder="e.g., John is the VP of Sales at TechCorp. They recently raised $10M Series A and are hiring aggressively."
-                className="w-full h-32 bg-slate-50 dark:bg-[#141414] border border-slate-200 dark:border-white/10 rounded-xl p-4 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-orange-500/50 resize-none text-sm"
+                placeholder="e.g. John is VP of Sales at TechCorp. They recently raised $10M Series A and are hiring aggressively."
+                className="h-32"
                 disabled={loading}
               />
             </div>
-
             <div>
-              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase tracking-wider">
-                2. Our Product / Offer
-              </label>
-              <textarea
+              <Label>2. Our product / offer</Label>
+              <Textarea
                 value={ourProduct}
                 onChange={(e) => setOurProduct(e.target.value)}
-                placeholder="e.g., We sell an AI platform that automates lead generation and saves SDRs 15 hours a week."
-                className="w-full h-24 bg-slate-50 dark:bg-[#141414] border border-slate-200 dark:border-white/10 rounded-xl p-4 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-orange-500/50 resize-none text-sm"
+                placeholder="e.g. We sell an AI platform that automates lead generation and saves SDRs 15 hours a week."
+                className="h-24"
                 disabled={loading}
               />
             </div>
-
             <div>
-              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase tracking-wider">
-                3. Email Tone
-              </label>
-              <select
-                value={tone}
-                onChange={(e) => setTone(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-[#141414] border border-slate-200 dark:border-white/10 rounded-xl p-4 text-slate-900 dark:text-white focus:outline-none focus:border-orange-500/50 text-sm appearance-none"
-                disabled={loading}
-              >
+              <Label>3. Email tone</Label>
+              <Select value={tone} onChange={(e) => setTone(e.target.value)} disabled={loading}>
                 <option value="Professional yet conversational">Professional yet conversational</option>
                 <option value="Direct and straight to the point">Direct and straight to the point</option>
                 <option value="Casual and friendly">Casual and friendly</option>
                 <option value="Humorous and witty">Humorous and witty</option>
-              </select>
+              </Select>
             </div>
-
-            <button
-              type="submit"
-              disabled={loading || !prospectInfo.trim() || !ourProduct.trim()}
-              className="w-full bg-orange-600 hover:bg-orange-500 text-white py-4 rounded-xl font-medium transition-colors disabled:opacity-50 flex justify-center items-center gap-2"
-            >
-              {loading ? (
-                <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Writing Draft...</>
-              ) : (
-                "Generate Campaign"
-              )}
-            </button>
+            <Button type="submit" disabled={loading || !prospectInfo.trim() || !ourProduct.trim()} className="w-full">
+              {loading ? "Writing draft..." : "Generate campaign"}
+            </Button>
           </form>
-
-          {error && (
-            <div className="mt-4 p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl text-sm text-red-600 dark:text-red-400">
-              {error}
-            </div>
+          {error && !loading && (
+            <p className="mt-4 rounded-md border border-danger/20 bg-danger-tint p-3 text-sm text-danger">{error}</p>
           )}
         </div>
 
-        {/* Right Column: Output Dashboard */}
-        <div className="bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-white/5 rounded-2xl p-6 shadow-inner flex flex-col relative overflow-hidden min-h-125">
-          {data ? (
-            <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500 z-10 relative">
-              
-              {/* Info Row (Spam Score & Angle) */}
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className={`px-4 py-3 rounded-xl border flex items-center justify-between gap-4 flex-1 ${getSpamScoreColor(data.spam_score_warning)}`}>
-                  <span className="text-xs font-bold uppercase tracking-widest opacity-80">Spam Score</span>
-                  <span className="font-extrabold">{data.spam_score_warning}</span>
-                </div>
+        <ResultPanel>
+          {loading ? (
+            <AgentLoadingState label="Writing your campaign..." />
+          ) : error ? (
+            <AgentErrorState message={error} />
+          ) : data ? (
+            <div className="space-y-5">
+              <div className={`flex items-center justify-between rounded-md border p-3.5 ${spamTone(data.spam_score_warning)}`}>
+                <span className="text-xs font-semibold uppercase tracking-wide opacity-80">Spam score</span>
+                <span className="text-sm font-semibold">{data.spam_score_warning}</span>
               </div>
 
-              <div className="bg-white dark:bg-[#111] border border-slate-200 dark:border-white/5 p-4 rounded-xl shadow-sm">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1">Personalization Angle</span>
-                <p className="text-sm text-slate-700 dark:text-slate-300 italic">&quot;{data.personalization_angle}&quot;</p>
+              <div className="rounded-md border border-border bg-background p-4">
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-ink-subtle">
+                  Personalization angle
+                </span>
+                <p className="text-sm italic text-ink-muted">&quot;{data.personalization_angle}&quot;</p>
               </div>
 
-              {/* Subject Lines */}
               <div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
-                  <span>🎯</span> Winning Subject Lines
+                <h3 className="mb-3 flex items-center gap-2 text-sm font-medium text-ink">
+                  <TargetIcon /> Winning subject lines
                 </h3>
                 <div className="space-y-2">
                   {data.subject_lines.map((line, i) => (
-                    <div key={i} className="flex items-center justify-between bg-white dark:bg-[#1a1a1a] border border-slate-200 dark:border-white/5 p-3 rounded-lg shadow-sm group">
-                      <span className="text-sm text-slate-800 dark:text-slate-200">{line}</span>
-                      <button onClick={() => copyToClipboard(line)} className="text-slate-400 hover:text-orange-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                        📋
+                    <div
+                      key={i}
+                      className="group flex items-center justify-between rounded-md border border-border bg-background p-3"
+                    >
+                      <span className="text-sm text-ink">{line}</span>
+                      <button
+                        onClick={() => copyToClipboard(line)}
+                        className="text-ink-subtle opacity-0 transition-opacity hover:text-accent-ink group-hover:opacity-100"
+                        aria-label="Copy subject line"
+                      >
+                        <CopyIcon className="size-4" />
                       </button>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Email Body */}
               <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    <span>✍️</span> Email Body
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="flex items-center gap-2 text-sm font-medium text-ink">
+                    <PenNibIcon /> Email body
                   </h3>
-                  <button onClick={() => copyToClipboard(data.email_body)} className="text-xs font-bold text-orange-600 dark:text-orange-400 hover:underline">
-                    Copy Draft
+                  <button
+                    onClick={() => copyToClipboard(data.email_body)}
+                    className="text-xs font-medium text-accent-ink hover:underline"
+                  >
+                    Copy draft
                   </button>
                 </div>
-                <div className="bg-white dark:bg-[#111] border border-slate-200 dark:border-white/5 p-5 rounded-xl text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed shadow-sm">
+                <div className="whitespace-pre-wrap rounded-md border border-border bg-background p-4 text-sm leading-relaxed text-ink">
                   {data.email_body}
                 </div>
               </div>
-
             </div>
           ) : (
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-10 z-0">
-              <div className="w-20 h-20 mb-4 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-4xl grayscale opacity-50">
-                🚀
-              </div>
-              <h3 className="text-lg font-bold text-slate-500 dark:text-slate-400">Ready to Sell</h3>
-              <p className="text-slate-400 dark:text-slate-500 text-sm max-w-xs mt-2">Enter your prospect&apos;s info and your product details to generate high-converting cold email copy.</p>
-            </div>
+            <AgentEmptyState
+              icon={PaperPlaneTiltIcon}
+              title="Ready to sell"
+              description="Enter prospect info and product details to generate cold email copy."
+            />
           )}
-        </div>
-
+        </ResultPanel>
       </div>
     </div>
   );

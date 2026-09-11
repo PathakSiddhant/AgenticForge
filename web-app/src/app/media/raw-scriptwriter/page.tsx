@@ -1,6 +1,15 @@
 "use client";
+
+import { ClockIcon, CopyIcon, FireIcon, NotePencilIcon } from "@phosphor-icons/react/dist/ssr";
 import { useState } from "react";
-import Link from "next/link";
+import { toast } from "sonner";
+
+import { AgentEmptyState, AgentErrorState, AgentHeader, AgentLoadingState, ResultPanel } from "@/components/agent-shell";
+import { Button } from "@/components/ui/button";
+import { Input, Label, Select, Textarea } from "@/components/ui/input";
+import { ALL_AGENTS } from "@/lib/agents";
+
+const agent = ALL_AGENTS.find((a) => a.slug === "raw-scriptwriter")!;
 
 interface ScriptData {
   video_title_ideas: string[];
@@ -13,7 +22,6 @@ export default function RawScriptwriterDashboard() {
   const [approvedHook, setApprovedHook] = useState("");
   const [targetLength, setTargetLength] = useState<number | "">("");
   const [creatorVibe, setCreatorVibe] = useState("High energy and hype");
-  
   const [data, setData] = useState<ScriptData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,200 +29,161 @@ export default function RawScriptwriterDashboard() {
   const generateScript = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!coreTopic.trim() || !approvedHook.trim() || targetLength === "") return;
-    
     setLoading(true);
     setError(null);
     setData(null);
 
     try {
-      const res = await fetch("https://agenticforge.onrender.com/api/media/raw-scriptwriter", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/media/raw-scriptwriter`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           core_topic: coreTopic,
           approved_hook: approvedHook,
           target_length_minutes: Number(targetLength),
-          creator_vibe: creatorVibe
+          creator_vibe: creatorVibe,
         }),
       });
-      
       const result = await res.json();
       if (result.error) {
         setError(result.error);
       } else {
         setData(result.script_content);
       }
-    } catch (err) {
-      setError("AI Engine connection failed. Is your Python backend running?");
+    } catch {
+      setError("Couldn't reach the backend. Is ai-engine running?");
     }
-    
     setLoading(false);
   };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    alert("Script copied to clipboard!");
+    toast.success("Script copied to clipboard.");
   };
 
   return (
-    <div className="max-w-6xl mx-auto pb-12">
-      <div className="mb-8">
-        <Link href="/media" className="inline-flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 hover:text-pink-600 dark:hover:text-pink-400 mb-6 transition-colors">
-          <span>←</span> Back to Media
-        </Link>
-        <div className="flex items-center gap-4 mb-4">
-          <div className="w-14 h-14 rounded-2xl bg-pink-100 dark:bg-pink-500/10 flex items-center justify-center text-3xl border border-pink-200 dark:border-pink-500/20">
-            ✍️
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">The Raw Scriptwriter</h1>
-            <p className="text-slate-600 dark:text-slate-400 mt-1">Turn your hook into a full, high-retention video script that sounds 100% human.</p>
-          </div>
-        </div>
-      </div>
+    <div className="mx-auto max-w-6xl pb-12">
+      <AgentHeader
+        icon={agent.icon}
+        title={agent.name}
+        description={agent.description}
+        backHref="/media"
+        backLabel="Back to Media"
+      />
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
-        {/* Left Column: Input Panel */}
-        <div className="lg:col-span-4 bg-white dark:bg-[#111] border border-slate-200 dark:border-white/5 rounded-2xl p-6 shadow-sm h-fit">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        <div className="h-fit rounded-lg border border-border bg-background p-6 lg:col-span-4">
           <form onSubmit={generateScript} className="space-y-5">
-            
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase tracking-wider">
-                Core Topic / Idea
-              </label>
-              <textarea
+              <Label>Core topic / idea</Label>
+              <Textarea
                 value={coreTopic}
                 onChange={(e) => setCoreTopic(e.target.value)}
-                placeholder="e.g., Tactical breakdown of Messi's False 9 role."
-                className="w-full h-24 bg-slate-50 dark:bg-[#141414] border border-slate-200 dark:border-white/10 rounded-xl p-4 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-pink-500/50 resize-none text-sm leading-relaxed"
+                placeholder="e.g. Tactical breakdown of Messi's False 9 role."
+                className="h-24"
                 disabled={loading}
               />
             </div>
-
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase tracking-wider">
-                Approved Hook (First 5 seconds)
-              </label>
-              <textarea
+              <Label>Approved hook (first 5 seconds)</Label>
+              <Textarea
                 value={approvedHook}
                 onChange={(e) => setApprovedHook(e.target.value)}
                 placeholder="Paste the hook from the Viral Hook Architect here..."
-                className="w-full h-24 bg-slate-50 dark:bg-[#141414] border border-slate-200 dark:border-white/10 rounded-xl p-4 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-pink-500/50 resize-none text-sm leading-relaxed"
+                className="h-24"
                 disabled={loading}
               />
             </div>
-
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase tracking-wider">
-                  Target Length (Mins)
-                </label>
-                <input
+                <Label>Target length (mins)</Label>
+                <Input
                   type="number"
                   step="0.5"
                   value={targetLength}
                   onChange={(e) => setTargetLength(e.target.value === "" ? "" : Number(e.target.value))}
-                  placeholder="e.g., 1.5"
-                  className="w-full bg-slate-50 dark:bg-[#141414] border border-slate-200 dark:border-white/10 rounded-xl p-3 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-pink-500/50 text-sm"
+                  placeholder="e.g. 1.5"
                   disabled={loading}
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase tracking-wider">
-                  Creator Vibe
-                </label>
-                <select
-                  value={creatorVibe}
-                  onChange={(e) => setCreatorVibe(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-[#141414] border border-slate-200 dark:border-white/10 rounded-xl p-3 text-slate-900 dark:text-white focus:outline-none focus:border-pink-500/50 text-sm appearance-none"
-                  disabled={loading}
-                >
-                  <option value="Aggressive sports fan">Aggressive & Hype</option>
-                  <option value="Analytical and calm">Analytical & Calm</option>
+                <Label>Creator vibe</Label>
+                <Select value={creatorVibe} onChange={(e) => setCreatorVibe(e.target.value)} disabled={loading}>
+                  <option value="Aggressive sports fan">Aggressive &amp; hype</option>
+                  <option value="Analytical and calm">Analytical &amp; calm</option>
                   <option value="Storytelling and mysterious">Storytelling</option>
-                  <option value="Casual and funny">Casual & Funny</option>
-                </select>
+                  <option value="Casual and funny">Casual &amp; funny</option>
+                </Select>
               </div>
             </div>
-
-            <button
+            <Button
               type="submit"
               disabled={loading || !coreTopic.trim() || !approvedHook.trim() || targetLength === ""}
-              className="w-full bg-pink-600 hover:bg-pink-500 text-white py-4 rounded-xl font-bold transition-colors disabled:opacity-50 flex justify-center items-center gap-2 mt-4 shadow-lg shadow-pink-500/20"
+              className="w-full"
             >
-              {loading ? (
-                <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Writing Script...</>
-              ) : (
-                "Draft Full Script"
-              )}
-            </button>
+              {loading ? "Writing script..." : "Draft full script"}
+            </Button>
           </form>
-
-          {error && (
-            <div className="mt-4 p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl text-sm text-red-600 dark:text-red-400">
-              {error}
-            </div>
+          {error && !loading && (
+            <p className="mt-4 rounded-md border border-danger/20 bg-danger-tint p-3 text-sm text-danger">{error}</p>
           )}
         </div>
 
-        {/* Right Column: AI Script Output */}
-        <div className="lg:col-span-8 bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-white/5 rounded-2xl p-6 shadow-inner flex flex-col relative overflow-hidden min-h-150">
-          {data ? (
-            <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500 z-10 relative">
-              
-              {/* Title Ideas & Pacing Notes */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-white dark:bg-[#111] border border-slate-200 dark:border-white/5 p-5 rounded-xl shadow-sm">
-                  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                    <span>🔥</span> Clickable Title Ideas
-                  </h3>
-                  <ul className="space-y-2">
-                    {data.video_title_ideas.map((title, i) => (
-                      <li key={i} className="text-sm text-slate-800 dark:text-slate-200 font-bold border-l-2 border-pink-500 pl-3 py-1">
-                        {title}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                
-                <div className="bg-pink-50/50 dark:bg-pink-900/10 border border-pink-100 dark:border-pink-500/20 p-5 rounded-xl shadow-sm">
-                  <h3 className="text-xs font-bold text-pink-600 dark:text-pink-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                    <span>⏱️</span> Delivery & Pacing Notes
-                  </h3>
-                  <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
-                    {data.pacing_notes}
-                  </p>
-                </div>
-              </div>
-
-              {/* The Script Document */}
-              <div className="bg-white dark:bg-[#111] border border-slate-200 dark:border-white/5 rounded-xl shadow-sm overflow-hidden flex flex-col">
-                <div className="bg-slate-100 dark:bg-white/5 px-5 py-3 border-b border-slate-200 dark:border-white/5 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Master Script Document</span>
+        <div className="lg:col-span-8">
+          <ResultPanel>
+            {loading ? (
+              <AgentLoadingState label="Writing your script..." />
+            ) : error ? (
+              <AgentErrorState message={error} />
+            ) : data ? (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="rounded-md border border-border bg-background p-5">
+                    <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-ink-subtle">
+                      <FireIcon weight="fill" /> Clickable title ideas
+                    </h3>
+                    <ul className="space-y-2">
+                      {data.video_title_ideas.map((title, i) => (
+                        <li key={i} className="border-l-2 border-accent py-1 pl-3 text-sm font-medium text-ink">
+                          {title}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                  <button onClick={() => copyToClipboard(data.full_script)} className="text-xs font-bold text-pink-600 dark:text-pink-400 hover:text-pink-800 transition-colors flex items-center gap-1">
-                    <span>📋</span> Copy Script
-                  </button>
+                  <div className="rounded-md border border-accent-tint-border bg-accent-tint p-5">
+                    <h3 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-accent-ink">
+                      <ClockIcon weight="fill" /> Delivery &amp; pacing notes
+                    </h3>
+                    <p className="text-sm font-medium leading-relaxed text-ink">{data.pacing_notes}</p>
+                  </div>
                 </div>
-                <div className="p-6 md:p-8 text-base text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed font-sans max-h-125 overflow-y-auto custom-scrollbar">
-                  {data.full_script}
-                </div>
-              </div>
 
-            </div>
-          ) : (
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-10 z-0">
-              <div className="w-24 h-24 mb-4 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-5xl grayscale opacity-50">
-                📝
+                <div className="overflow-hidden rounded-md border border-border bg-background">
+                  <div className="flex items-center justify-between border-b border-border bg-surface px-5 py-3">
+                    <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-ink-subtle">
+                      <NotePencilIcon className="size-3.5" /> Master script document
+                    </span>
+                    <button
+                      onClick={() => copyToClipboard(data.full_script)}
+                      className="flex items-center gap-1 text-xs font-medium text-accent-ink hover:underline"
+                    >
+                      <CopyIcon className="size-3.5" /> Copy script
+                    </button>
+                  </div>
+                  <div className="max-h-125 overflow-y-auto custom-scrollbar whitespace-pre-wrap p-6 text-base leading-relaxed text-ink">
+                    {data.full_script}
+                  </div>
+                </div>
               </div>
-              <h3 className="text-lg font-bold text-slate-500 dark:text-slate-400">Writer&apos;s Room Empty</h3>
-              <p className="text-slate-400 dark:text-slate-500 text-sm max-w-xs mt-2">Paste your topic and winning hook to generate a highly engaging, human-sounding script.</p>
-            </div>
-          )}
+            ) : (
+              <AgentEmptyState
+                icon={NotePencilIcon}
+                title="Writer's room empty"
+                description="Paste your topic and winning hook to generate a full script."
+              />
+            )}
+          </ResultPanel>
         </div>
-
       </div>
     </div>
   );

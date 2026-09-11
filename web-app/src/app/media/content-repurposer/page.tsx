@@ -1,6 +1,20 @@
 "use client";
+
+import {
+  ArrowsClockwiseIcon,
+  DeviceMobileIcon,
+  LinkedinLogoIcon,
+  XLogoIcon,
+} from "@phosphor-icons/react/dist/ssr";
 import { useState } from "react";
-import Link from "next/link";
+import { toast } from "sonner";
+
+import { AgentEmptyState, AgentErrorState, AgentHeader, AgentLoadingState, ResultPanel } from "@/components/agent-shell";
+import { Button } from "@/components/ui/button";
+import { Input, Label, Textarea } from "@/components/ui/input";
+import { ALL_AGENTS } from "@/lib/agents";
+
+const agent = ALL_AGENTS.find((a) => a.slug === "content-repurposer")!;
 
 interface RepurposeData {
   twitter_thread: string[];
@@ -11,7 +25,6 @@ interface RepurposeData {
 export default function ContentRepurposerDashboard() {
   const [sourceContent, setSourceContent] = useState("");
   const [coreMessage, setCoreMessage] = useState("");
-  
   const [data, setData] = useState<RepurposeData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -19,176 +32,153 @@ export default function ContentRepurposerDashboard() {
   const repurposeContent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!sourceContent.trim() || !coreMessage.trim()) return;
-    
     setLoading(true);
     setError(null);
     setData(null);
 
     try {
-      const res = await fetch("https://agenticforge.onrender.com/api/media/content-repurposer", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/media/content-repurposer`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          source_content: sourceContent,
-          core_message: coreMessage
-        }),
+        body: JSON.stringify({ source_content: sourceContent, core_message: coreMessage }),
       });
-      
       const result = await res.json();
       if (result.error) {
         setError(result.error);
       } else {
         setData(result.repurposed_content);
       }
-    } catch (err) {
-      setError("AI Engine connection failed. Is your Python backend running?");
+    } catch {
+      setError("Couldn't reach the backend. Is ai-engine running?");
     }
-    
     setLoading(false);
   };
 
   const copyToClipboard = (text: string, platform: string) => {
     navigator.clipboard.writeText(text);
-    alert(`${platform} content copied to clipboard!`);
+    toast.success(`${platform} content copied to clipboard.`);
   };
 
   return (
-    <div className="max-w-6xl mx-auto pb-12">
-      <div className="mb-8">
-        <Link href="/media" className="inline-flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 mb-6 transition-colors">
-          <span>←</span> Back to Media
-        </Link>
-        <div className="flex items-center gap-4 mb-4">
-          <div className="w-14 h-14 rounded-2xl bg-purple-100 dark:bg-purple-500/10 flex items-center justify-center text-3xl border border-purple-200 dark:border-purple-500/20">
-            ♻️
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">The Content Repurposer</h1>
-            <p className="text-slate-600 dark:text-slate-400 mt-1">Transform one piece of long-form content into native posts for Twitter, LinkedIn, and Shorts.</p>
-          </div>
-        </div>
-      </div>
+    <div className="mx-auto max-w-6xl pb-12">
+      <AgentHeader
+        icon={agent.icon}
+        title={agent.name}
+        description={agent.description}
+        backHref="/media"
+        backLabel="Back to Media"
+      />
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
-        
-        {/* Left Column: Input Panel */}
-        <div className="xl:col-span-4 bg-white dark:bg-[#111] border border-slate-200 dark:border-white/5 rounded-2xl p-6 shadow-sm h-fit">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+        <div className="h-fit rounded-lg border border-border bg-background p-6 xl:col-span-4">
           <form onSubmit={repurposeContent} className="space-y-5">
-            
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase tracking-wider">
-                Core Message / Takeaway
-              </label>
-              <input
-                type="text"
+              <Label>Core message / takeaway</Label>
+              <Input
                 value={coreMessage}
                 onChange={(e) => setCoreMessage(e.target.value)}
-                placeholder="e.g., Consistency is more important than intensity."
-                className="w-full bg-slate-50 dark:bg-[#141414] border border-slate-200 dark:border-white/10 rounded-xl p-4 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-purple-500/50 text-sm"
+                placeholder="e.g. Consistency is more important than intensity."
                 disabled={loading}
               />
             </div>
-
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase tracking-wider">
-                Source Content (Transcript/Article)
-              </label>
-              <textarea
+              <Label>Source content (transcript/article)</Label>
+              <Textarea
                 value={sourceContent}
                 onChange={(e) => setSourceContent(e.target.value)}
                 placeholder="Paste your YouTube transcript, blog post, or brain dump here..."
-                className="w-full h-64 bg-slate-50 dark:bg-[#141414] border border-slate-200 dark:border-white/10 rounded-xl p-4 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-purple-500/50 resize-none text-sm leading-relaxed custom-scrollbar"
+                className="h-64"
                 disabled={loading}
               />
             </div>
-
-            <button
-              type="submit"
-              disabled={loading || !sourceContent.trim() || !coreMessage.trim()}
-              className="w-full bg-purple-600 hover:bg-purple-500 text-white py-4 rounded-xl font-bold transition-all disabled:opacity-50 flex justify-center items-center gap-2 mt-4 shadow-md hover:shadow-xl focus:outline-none"
-            >
-              {loading ? (
-                <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Generating Content...</>
-              ) : (
-                "Repurpose Everywhere"
-              )}
-            </button>
+            <Button type="submit" disabled={loading || !sourceContent.trim() || !coreMessage.trim()} className="w-full">
+              {loading ? "Generating content..." : "Repurpose everywhere"}
+            </Button>
           </form>
-
-          {error && (
-            <div className="mt-4 p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl text-sm text-red-600 dark:text-red-400">
-              {error}
-            </div>
+          {error && !loading && (
+            <p className="mt-4 rounded-md border border-danger/20 bg-danger-tint p-3 text-sm text-danger">{error}</p>
           )}
         </div>
 
-        {/* Right Column: Multi-Platform Outputs */}
         <div className="xl:col-span-8">
-          {data ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-right-4 duration-500">
-              
-              {/* X / Twitter Thread */}
-              <div className="bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-white/5 rounded-2xl p-6 shadow-inner md:col-span-2">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    <span className="text-[#1DA1F2]">🐦</span> Viral X/Twitter Thread
+          {loading || error || !data ? (
+            <ResultPanel>
+              {loading ? (
+                <AgentLoadingState label="Repurposing your content..." />
+              ) : error ? (
+                <AgentErrorState message={error} />
+              ) : (
+                <AgentEmptyState
+                  icon={ArrowsClockwiseIcon}
+                  title="Content multiplier"
+                  description="Paste a long-form script to generate native content for every platform."
+                />
+              )}
+            </ResultPanel>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="rounded-lg border border-border bg-surface p-5 md:col-span-2">
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="flex items-center gap-2 text-sm font-medium text-ink">
+                    <XLogoIcon weight="fill" /> X / Twitter thread
                   </h3>
-                  <button onClick={() => copyToClipboard(data.twitter_thread.join('\n\n'), 'Twitter')} className="text-xs font-bold text-slate-500 hover:text-slate-800 dark:hover:text-white transition-colors">
-                    Copy All
+                  <button
+                    onClick={() => copyToClipboard(data.twitter_thread.join("\n\n"), "Twitter")}
+                    className="text-xs font-medium text-ink-muted hover:text-ink"
+                  >
+                    Copy all
                   </button>
                 </div>
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {data.twitter_thread.map((tweet, i) => (
-                    <div key={i} className="bg-white dark:bg-[#111] p-4 rounded-xl border border-slate-200 dark:border-white/5 shadow-sm relative">
-                      <span className="absolute top-4 right-4 text-xs font-bold text-slate-400">{i + 1}/{data.twitter_thread.length}</span>
-                      <p className="text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap pr-8">{tweet}</p>
+                    <div key={i} className="relative rounded-md border border-border bg-background p-4">
+                      <span className="absolute right-4 top-4 text-xs font-medium text-ink-subtle">
+                        {i + 1}/{data.twitter_thread.length}
+                      </span>
+                      <p className="whitespace-pre-wrap pr-8 text-sm text-ink">{tweet}</p>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* LinkedIn Post */}
-              <div className="bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-white/5 rounded-2xl p-6 shadow-inner h-fit">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    <span className="text-[#0A66C2]">💼</span> LinkedIn Story
+              <div className="h-fit rounded-lg border border-border bg-surface p-5">
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="flex items-center gap-2 text-sm font-medium text-ink">
+                    <LinkedinLogoIcon weight="fill" /> LinkedIn story
                   </h3>
-                  <button onClick={() => copyToClipboard(data.linkedin_post, 'LinkedIn')} className="text-xs font-bold text-slate-500 hover:text-slate-800 dark:hover:text-white transition-colors">
+                  <button
+                    onClick={() => copyToClipboard(data.linkedin_post, "LinkedIn")}
+                    className="text-xs font-medium text-ink-muted hover:text-ink"
+                  >
                     Copy
                   </button>
                 </div>
-                <div className="bg-white dark:bg-[#111] p-5 rounded-xl border border-slate-200 dark:border-white/5 shadow-sm">
-                  <p className="text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">{data.linkedin_post}</p>
+                <div className="rounded-md border border-border bg-background p-4">
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink">{data.linkedin_post}</p>
                 </div>
               </div>
 
-              {/* Shorts / Reels Script */}
-              <div className="bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-white/5 rounded-2xl p-6 shadow-inner h-fit">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    <span className="text-[#E1306C]">📱</span> Shorts/Reels Script (45s)
+              <div className="h-fit rounded-lg border border-border bg-surface p-5">
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="flex items-center gap-2 text-sm font-medium text-ink">
+                    <DeviceMobileIcon weight="fill" /> Shorts/Reels script (45s)
                   </h3>
-                  <button onClick={() => copyToClipboard(data.short_form_script, 'Shorts')} className="text-xs font-bold text-slate-500 hover:text-slate-800 dark:hover:text-white transition-colors">
+                  <button
+                    onClick={() => copyToClipboard(data.short_form_script, "Shorts")}
+                    className="text-xs font-medium text-ink-muted hover:text-ink"
+                  >
                     Copy
                   </button>
                 </div>
-                <div className="bg-white dark:bg-[#111] p-5 rounded-xl border border-slate-200 dark:border-white/5 shadow-sm border-l-4" style={{ borderLeftColor: '#f43f5e' }}>
-                  <p className="text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed italic">{data.short_form_script}</p>
+                <div className="rounded-md border-l-2 border-l-accent border-y border-r border-border bg-background p-4">
+                  <p className="whitespace-pre-wrap text-sm italic leading-relaxed text-ink">
+                    {data.short_form_script}
+                  </p>
                 </div>
               </div>
-
-            </div>
-          ) : (
-            <div className="bg-slate-50 dark:bg-[#0a0a0a] border border-slate-200 dark:border-white/5 rounded-2xl p-10 shadow-inner flex flex-col items-center justify-center text-center h-full min-h-125">
-              <div className="w-24 h-24 mb-4 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-5xl grayscale opacity-50">
-                🚀
-              </div>
-              <h3 className="text-lg font-bold text-slate-500 dark:text-slate-400">Content Multiplier</h3>
-              <p className="text-slate-400 dark:text-slate-500 text-sm max-w-sm mt-2">Paste a long-form script or transcript to instantly generate native content for X, LinkedIn, and Shorts.</p>
             </div>
           )}
         </div>
-
       </div>
     </div>
   );
