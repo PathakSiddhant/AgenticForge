@@ -2,6 +2,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 
+import { AgentVisitTracker } from "@/components/agent-visit-tracker";
 import { AppEntrance } from "@/components/app-entrance";
 import { ConfirmProvider } from "@/components/confirm-provider";
 import Sidebar from "@/components/sidebar";
@@ -62,6 +63,7 @@ export default function RootLayout({
               }}
             />
             <AppEntrance />
+            <AgentVisitTracker />
           </ThemeProvider>
         </body>
       </html>

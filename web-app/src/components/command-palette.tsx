@@ -7,15 +7,21 @@ import {
   SquaresFourIcon,
   UsersThreeIcon,
 } from "@phosphor-icons/react/dist/ssr";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { AGENT_CATEGORIES, ALL_AGENTS, getAgentsByCategory } from "@/lib/agents";
 import { cn } from "@/lib/utils";
 
+// Fired by anything that wants to open the palette without prop-drilling or
+// lifting state (e.g. the dashboard hero's search button).
+export const OPEN_COMMAND_PALETTE_EVENT = "agenticforge:open-command-palette";
+
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const router = useRouter();
+  const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
@@ -27,8 +33,13 @@ export function CommandPalette() {
         setOpen(false);
       }
     };
+    const openHandler = () => setOpen(true);
     document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
+    window.addEventListener(OPEN_COMMAND_PALETTE_EVENT, openHandler);
+    return () => {
+      document.removeEventListener("keydown", handler);
+      window.removeEventListener(OPEN_COMMAND_PALETTE_EVENT, openHandler);
+    };
   }, []);
 
   const go = (href: string) => {
@@ -49,18 +60,30 @@ export function CommandPalette() {
         </kbd>
       </button>
 
-      {open && (
-        <div
-          className="fixed inset-0 z-modal-backdrop flex items-start justify-center bg-ink/40 pt-[15vh] backdrop-blur-[2px]"
-          onClick={() => setOpen(false)}
-        >
-          <Command
-            className={cn(
-              "z-modal w-full max-w-xl overflow-hidden rounded-lg border border-border bg-surface-raised shadow-2xl"
-            )}
-            onClick={(event) => event.stopPropagation()}
-            shouldFilter
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            className="fixed inset-0 z-modal-backdrop flex items-start justify-center bg-ink/40 pt-[15vh] backdrop-blur-[2px]"
+            onClick={() => setOpen(false)}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
           >
+            <motion.div
+              className="w-full max-w-xl"
+              onClick={(event) => event.stopPropagation()}
+              initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.96, y: -8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={prefersReducedMotion ? undefined : { opacity: 0, scale: 0.96, y: -8 }}
+              transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <Command
+                className={cn(
+                  "z-modal w-full overflow-hidden rounded-lg border border-border bg-surface-raised shadow-2xl"
+                )}
+                shouldFilter
+              >
             <div className="flex items-center gap-2.5 border-b border-border px-4">
               <MagnifyingGlassIcon className="size-4 shrink-0 text-ink-subtle" />
               <Command.Input
@@ -146,10 +169,12 @@ export function CommandPalette() {
                   </Command.Group>
                 );
               })}
-            </Command.List>
-          </Command>
-        </div>
-      )}
+              </Command.List>
+              </Command>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }
