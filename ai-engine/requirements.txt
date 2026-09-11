@@ -9,3 +9,7 @@ google-genai
 twilio
 fpdf2
 PyPDF2
+pinecone
+pandas
+xlsxwriter
+requests
