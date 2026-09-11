@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 
 import { AppEntrance } from "@/components/app-entrance";
+import { ConfirmProvider } from "@/components/confirm-provider";
 import Sidebar from "@/components/sidebar";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Topbar } from "@/components/topbar";
@@ -44,13 +45,15 @@ export default function RootLayout({
             enableSystem={false}
             disableTransitionOnChange
           >
-            <Sidebar />
-            <div className="flex h-full min-w-0 flex-1 flex-col">
-              <Topbar />
-              <main className="min-h-0 flex-1 overflow-y-auto custom-scrollbar">
-                {children}
-              </main>
-            </div>
+            <ConfirmProvider>
+              <Sidebar />
+              <div className="flex h-full min-w-0 flex-1 flex-col">
+                <Topbar />
+                <main className="min-h-0 flex-1 overflow-y-auto custom-scrollbar">
+                  {children}
+                </main>
+              </div>
+            </ConfirmProvider>
             <Toaster
               position="bottom-right"
               toastOptions={{
