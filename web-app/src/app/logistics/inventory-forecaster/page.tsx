@@ -29,7 +29,7 @@ export default function InventoryForecasterDashboard() {
     setData(null);
 
     try {
-      const res = await fetch("https://agenticforge.onrender.com/api/logistics/inventory-forecaster", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/logistics/inventory-forecaster`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 

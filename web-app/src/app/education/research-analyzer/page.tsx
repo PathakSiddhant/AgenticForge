@@ -47,7 +47,7 @@ export default function ResearchAnalyzerDashboard() {
       formData.append("focus_area", focusArea || "General Overview");
       formData.append("file", file);
 
-      const aiRes = await fetch("https://agenticforge.onrender.com/api/education/research-analyzer", {
+      const aiRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/education/research-analyzer`, {
         method: "POST",
         body: formData,
       });

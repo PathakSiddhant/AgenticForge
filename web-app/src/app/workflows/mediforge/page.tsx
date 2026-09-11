@@ -60,8 +60,8 @@ export default function MediForgeDashboard() {
     setIsLoading(true);
     try {
       const [aptRes, docRes] = await Promise.all([
-        fetch("https://agenticforge.onrender.com/api/mediforge/appointments", { cache: "no-store" }),
-        fetch("https://agenticforge.onrender.com/api/mediforge/doctors", { cache: "no-store" })
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/mediforge/appointments`, { cache: "no-store" }),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/mediforge/doctors`, { cache: "no-store" })
       ]);
       if (aptRes.ok) setAppointments(await aptRes.json());
       if (docRes.ok) setDoctors(await docRes.json());
@@ -112,7 +112,7 @@ export default function MediForgeDashboard() {
       setIsSubmitting(false); return;
     }
     try {
-      const res = await fetch(editingId ? `https://agenticforge.onrender.com/api/mediforge/appointments/${editingId}` : "https://agenticforge.onrender.com/api/mediforge/appointments/manual", {
+      const res = await fetch(editingId ? `${process.env.NEXT_PUBLIC_API_URL}/api/mediforge/appointments/${editingId}` : `${process.env.NEXT_PUBLIC_API_URL}/api/mediforge/appointments/manual`, {
         method: editingId ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...formData, doctor_id: parseInt(formData.doctor_id) })
       });
       if ((await res.json()).status === "success") { setIsModalOpen(false); fetchData(); }
@@ -129,7 +129,7 @@ export default function MediForgeDashboard() {
     if (!editingId || !confirm("Are you sure you want to completely remove this appointment?")) return;
     setIsSubmitting(true);
     try {
-      const res = await fetch(`https://agenticforge.onrender.com/api/mediforge/appointments/${editingId}`, { method: "DELETE" });
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/mediforge/appointments/${editingId}`, { method: "DELETE" });
       if ((await res.json()).status === "success") { setIsModalOpen(false); fetchData(); }
     } catch (error) { 
       console.error(error); 
@@ -144,7 +144,7 @@ export default function MediForgeDashboard() {
     setMessages(prev => [...prev, { role: "user", text: inputText }]);
     const userMsg = inputText; setInputText(""); setIsTyping(true);
     try {
-      const res = await fetch("https://agenticforge.onrender.com/api/mediforge/chat", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/mediforge/chat`, {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: userMsg })
       });
       const data = await res.json();

@@ -32,7 +32,7 @@ export default function ViralHookDashboard() {
     setData(null);
 
     try {
-      const res = await fetch("https://agenticforge.onrender.com/api/media/viral-hook", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/media/viral-hook`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 

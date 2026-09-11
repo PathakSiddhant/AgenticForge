@@ -72,8 +72,8 @@ export default function LeadForgeDashboard() {
     setIsLoadingLeads(true);
     try {
       const [leadsRes, meetsRes] = await Promise.all([
-        fetch("http://127.0.0.1:8000/api/leads"),
-        fetch("http://127.0.0.1:8000/api/leads/meetings")
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/leads`),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/leads/meetings`)
       ]);
       
       if (leadsRes.ok) {
@@ -100,8 +100,8 @@ export default function LeadForgeDashboard() {
     const fetchSilent = async () => {
       try {
         const [leadsRes, meetsRes] = await Promise.all([
-          fetch("http://127.0.0.1:8000/api/leads"),
-          fetch("http://127.0.0.1:8000/api/leads/meetings")
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/leads`),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/leads/meetings`)
         ]);
         if (leadsRes.ok) {
           const data = await leadsRes.json();
@@ -150,7 +150,7 @@ export default function LeadForgeDashboard() {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/leads/submit", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/leads/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...formData, source: "Manual Simulation" }),
@@ -171,7 +171,7 @@ export default function LeadForgeDashboard() {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/leads/${editFormData.id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/leads/${editFormData.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -206,7 +206,7 @@ export default function LeadForgeDashboard() {
   const handleDeleteLead = async (leadId: number) => {
     if (!confirm("Are you sure you want to permanently delete this lead?")) return;
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/leads/${leadId}`, { method: 'DELETE' });
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/leads/${leadId}`, { method: 'DELETE' });
       if (response.ok) {
         setSelectedLead(null); 
         fetchData(); 
@@ -221,7 +221,7 @@ export default function LeadForgeDashboard() {
     if (!selectedLead) return;
     setLoading(true);
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/leads/schedule-manual", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/leads/schedule-manual`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -246,7 +246,7 @@ export default function LeadForgeDashboard() {
   const handleMarkComplete = async (leadId: number) => {
     if (!confirm("Did you finish the meeting? This will permanently remove the lead and meeting from the database.")) return;
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/leads/meetings/${leadId}/complete`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/leads/meetings/${leadId}/complete`, {
         method: "DELETE"
       });
       if (res.ok) {
@@ -989,7 +989,7 @@ export default function LeadForgeDashboard() {
               <div className="pt-5 flex flex-col gap-3 border-t border-slate-200 dark:border-white/10">
                 {/* 📊 EXCEL DOWNLOAD BUTTON */}
                 <button 
-                  onClick={() => window.open(`http://127.0.0.1:8000/api/export/excel?start_date=${exportDates.start}&end_date=${exportDates.end}`, '_blank')}
+                  onClick={() => window.open(`${process.env.NEXT_PUBLIC_API_URL}/api/export/excel?start_date=${exportDates.start}&end_date=${exportDates.end}`, '_blank')}
                   className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-bold shadow-sm flex justify-center items-center gap-2 transition-transform hover:scale-[1.02] text-sm"
                 >
                   📊 Download Excel Workbook (Data & Charts)
@@ -997,7 +997,7 @@ export default function LeadForgeDashboard() {
                 
                 {/* 🤖 AI MEMO DOWNLOAD BUTTON */}
                 <button 
-                  onClick={() => window.open(`http://127.0.0.1:8000/api/export/ai-memo?start_date=${exportDates.start}&end_date=${exportDates.end}`, '_blank')}
+                  onClick={() => window.open(`${process.env.NEXT_PUBLIC_API_URL}/api/export/ai-memo?start_date=${exportDates.start}&end_date=${exportDates.end}`, '_blank')}
                   className="w-full bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-200 text-white dark:text-slate-900 py-3 rounded-xl font-bold shadow-sm flex justify-center items-center gap-2 transition-transform hover:scale-[1.02] text-sm"
                 >
                   🤖 Generate AI Executive Memo (.md)

@@ -25,7 +25,7 @@ export default function SEOAnalyzerDashboard() {
     setData(null);
 
     try {
-      const res = await fetch("https://agenticforge.onrender.com/api/sales/seo-analyzer", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/sales/seo-analyzer`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 

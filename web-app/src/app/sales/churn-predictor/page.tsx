@@ -25,7 +25,7 @@ export default function ChurnPredictorDashboard() {
     setData(null);
 
     try {
-      const res = await fetch("https://agenticforge.onrender.com/api/sales/churn-predictor", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/sales/churn-predictor`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 

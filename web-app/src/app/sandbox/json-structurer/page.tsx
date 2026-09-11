@@ -13,7 +13,7 @@ export default function JsonStructurer() {
     setOutput(null);
 
     try {
-      const res = await fetch("https://agenticforge.onrender.com/api/structure", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/structure`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: input }),

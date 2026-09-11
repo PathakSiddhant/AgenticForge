@@ -70,7 +70,7 @@ export default function EduPlannerDashboard() {
       formData.append("timeframe", timeframe || "7 Days");
       formData.append("file", file);
 
-      const aiRes = await fetch("https://agenticforge.onrender.com/api/education/edu-planner", {
+      const aiRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/education/edu-planner`, {
         method: "POST",
         body: formData,
       });

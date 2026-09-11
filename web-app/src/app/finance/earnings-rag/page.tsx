@@ -24,7 +24,7 @@ export default function EarningsRagDashboard() {
     setData(null);
 
     try {
-      const res = await fetch("https://agenticforge.onrender.com/api/finance/earnings-rag", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/finance/earnings-rag`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
