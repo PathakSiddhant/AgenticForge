@@ -33,6 +33,27 @@ export function DialogContent({
   );
 }
 
+export function SheetContent({
+  className,
+  children,
+  ...props
+}: DialogPrimitive.DialogContentProps) {
+  return (
+    <DialogPrimitive.Portal>
+      <DialogPrimitive.Overlay className="fixed inset-0 z-modal-backdrop bg-ink/40 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=open]:fade-in data-[state=closed]:animate-out data-[state=closed]:fade-out" />
+      <DialogPrimitive.Content
+        className={cn(
+          "fixed inset-y-0 right-0 z-modal flex h-full w-full max-w-sm flex-col border-l border-border bg-surface-raised shadow-2xl outline-none data-[state=open]:animate-in data-[state=open]:slide-in-from-right data-[state=closed]:animate-out data-[state=closed]:slide-out-to-right",
+          className
+        )}
+        {...props}
+      >
+        {children}
+      </DialogPrimitive.Content>
+    </DialogPrimitive.Portal>
+  );
+}
+
 export function DialogHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
