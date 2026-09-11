@@ -79,7 +79,7 @@ export default function JsonStructurer() {
                 {typeof output === "string" ? output : JSON.stringify(output, null, 2)}
               </pre>
             ) : (
-              <p className="font-mono text-sm text-ink-subtle">// Output will appear here...</p>
+              <p className="font-mono text-sm text-ink-subtle">{"// Output will appear here..."}</p>
             )}
           </div>
         </ResultPanel>
