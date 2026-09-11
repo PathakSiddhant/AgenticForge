@@ -404,7 +404,7 @@ export default function LeadForgeDashboard() {
   );
 
   return (
-    <div className="w-full p-4 text-ink lg:p-8">
+    <div className="w-full px-4 pt-8 pb-12 text-ink sm:px-6 lg:px-8">
       <div className="mb-6 flex flex-col items-start justify-between gap-4 lg:flex-row lg:items-center">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-ink md:text-[28px]">

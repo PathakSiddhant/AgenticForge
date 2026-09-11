@@ -40,7 +40,7 @@ export default function JsonStructurer() {
   };
 
   return (
-    <div className="mx-auto max-w-5xl pb-12">
+    <div className="mx-auto max-w-5xl px-4 pt-8 pb-12 sm:px-6 lg:px-8">
       <AgentHeader
         icon={agent.icon}
         title={agent.name}

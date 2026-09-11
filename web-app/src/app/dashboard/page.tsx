@@ -11,7 +11,7 @@ import {
 
 export default function DashboardPage() {
   return (
-    <div className="mx-auto max-w-6xl px-8 py-10">
+    <div className="mx-auto max-w-6xl px-4 pt-8 pb-12 sm:px-6 lg:px-8">
       <div className="mb-10">
         <h1 className="text-2xl font-semibold tracking-tight text-ink">
           Agent Library

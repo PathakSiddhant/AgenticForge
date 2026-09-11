@@ -12,7 +12,7 @@ export function CategoryHub({
   const CategoryIcon = CATEGORY_ICONS[category];
 
   return (
-    <div className="mx-auto max-w-6xl pb-12">
+    <div className="mx-auto max-w-6xl px-4 pt-8 pb-12 sm:px-6 lg:px-8">
       <div className="mb-10 flex items-start gap-4">
         <div className="flex size-12 shrink-0 items-center justify-center rounded-md bg-accent-tint text-accent-ink">
           <CategoryIcon className="size-6" />

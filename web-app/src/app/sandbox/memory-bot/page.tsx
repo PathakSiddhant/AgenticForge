@@ -56,7 +56,7 @@ export default function MemoryBot() {
   };
 
   return (
-    <div className="mx-auto flex h-full max-w-4xl flex-col pb-4">
+    <div className="mx-auto flex h-full max-w-4xl flex-col px-4 pt-8 pb-4 sm:px-6 lg:px-8">
       <div className="shrink-0">
         <AgentHeader
           icon={agent.icon}

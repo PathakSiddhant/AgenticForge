@@ -68,7 +68,7 @@ function AIBookingPageInner() {
 
   if (!leadId) {
     return (
-      <div className="flex h-dvh w-full items-center justify-center bg-background">
+      <div className="flex h-full w-full items-center justify-center bg-background">
         <div className="max-w-sm rounded-lg border border-danger/20 bg-surface p-8 text-center">
           <WarningCircleIcon className="mx-auto mb-3 size-8 text-danger" weight="fill" />
           <h2 className="mb-1.5 text-lg font-semibold text-ink">Invalid booking link</h2>
@@ -79,7 +79,7 @@ function AIBookingPageInner() {
   }
 
   return (
-    <div className="mx-auto flex h-dvh w-full max-w-3xl flex-col overflow-hidden p-6">
+    <div className="mx-auto flex h-full w-full max-w-3xl flex-col overflow-hidden px-4 pt-8 pb-6 sm:px-6 lg:px-8">
       <div className="mb-5 mt-2 flex-none text-center">
         <h1 className="text-2xl font-semibold tracking-tight text-ink">Schedule a Consultation</h1>
         <p className="mt-1 text-sm text-ink-muted">
@@ -145,7 +145,7 @@ export default function Page() {
   return (
     <Suspense
       fallback={
-        <div className="flex h-dvh items-center justify-center text-sm text-ink-muted">Loading...</div>
+        <div className="flex h-full items-center justify-center text-sm text-ink-muted">Loading...</div>
       }
     >
       <AIBookingPageInner />
