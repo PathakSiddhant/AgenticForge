@@ -51,7 +51,7 @@ async def screen_resume(
         combined_content = f"JOB DESCRIPTION (JD):\n{job_description}\n\nCANDIDATE RESUME:\n{resume_text}"
 
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-3.6-flash',
             contents=combined_content,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",

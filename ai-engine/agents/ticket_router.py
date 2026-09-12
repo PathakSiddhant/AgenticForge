@@ -38,7 +38,7 @@ def route_ticket(request: TicketRequest):
         combined_content = f"INCOMING CUSTOMER MESSAGE:\n{request.customer_message}"
 
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-3.6-flash',
             contents=combined_content,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",

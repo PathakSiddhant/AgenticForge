@@ -47,7 +47,7 @@ def generate_hook(request: HookRequest):
         combined_content = f"TOPIC: {request.core_topic}\nPLATFORM: {request.target_platform}\nCREATOR VIBE: {request.creator_vibe}"
 
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-3.6-flash',
             contents=combined_content,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",

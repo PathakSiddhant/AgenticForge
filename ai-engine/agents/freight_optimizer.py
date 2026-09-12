@@ -43,7 +43,7 @@ def optimize_freight(request: RouteRequest):
         combined_content = f"ORIGIN: {request.origin}\nDESTINATION: {request.destination}\nWEIGHT: {request.package_weight_kg} kg\nPRIORITY: {request.priority_level}\nSPECIAL HANDLING: {request.special_handling}"
 
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-3.6-flash',
             contents=combined_content,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",

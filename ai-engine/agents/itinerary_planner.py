@@ -57,7 +57,7 @@ def generate_itinerary(request: TravelRequest):
         combined_content = f"DESTINATION: {request.destination}\nDAYS: {request.days}\nBUDGET LEVEL: {request.budget_level}\nVIBE: {request.vibe}"
 
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-3.6-flash',
             contents=combined_content,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",

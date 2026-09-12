@@ -41,7 +41,7 @@ def generate_market_intel(request: IntelRequest):
         You must STRICTLY return the data in the requested JSON format. Be objective and data-driven."""
 
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-3.6-flash',
             contents=f"Generate a market intelligence report for: {request.company}",
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",

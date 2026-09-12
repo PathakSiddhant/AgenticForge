@@ -39,7 +39,7 @@ def predict_churn(request: ChurnRequest):
         combined_content = f"CUSTOMER TENURE: {request.customer_tenure}\n\nSUPPORT TICKET HISTORY:\n{request.customer_history}"
 
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-3.6-flash',
             contents=combined_content,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",

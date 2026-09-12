@@ -199,7 +199,7 @@ class MediForgeReceptionist:
         """
         
         self.model = genai.GenerativeModel(
-            model_name="gemini-2.5-flash", 
+            model_name="gemini-3.6-flash", 
             system_instruction=self.system_prompt,
             tools=[check_availability, book_appointment, lookup_appointment, cancel_appointment] 
         )

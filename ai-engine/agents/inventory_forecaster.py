@@ -42,7 +42,7 @@ def forecast_inventory(request: ForecastRequest):
         combined_content = f"ITEM: {request.item_name}\nCURRENT STOCK: {request.current_stock} units\nAVG DAILY USAGE: {request.historical_daily_usage}\nLEAD TIME: {request.supplier_lead_time_days} days\nCONDITIONS: {request.market_conditions}"
 
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-3.6-flash',
             contents=combined_content,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",

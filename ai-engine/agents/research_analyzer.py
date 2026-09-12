@@ -55,7 +55,7 @@ async def analyze_research_paper(
         combined_content = f"USER FOCUS AREA:\n{focus_area}\n\nRESEARCH PAPER TEXT (Excerpt):\n{paper_text}"
 
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-3.6-flash',
             contents=combined_content,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",

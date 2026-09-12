@@ -34,7 +34,7 @@ def run_tool_agent(request: ToolRequest):
     try:
         # Hum ek chat session start kar rahe hain jisme AI ko humne tool pakda diya hai
         chat = client.chats.create(
-            model='gemini-2.5-flash',
+            model='gemini-3.6-flash',
             config=types.GenerateContentConfig(
                 tools=[get_crypto_price], # <--- MAGIC HAPPENS HERE: AI ko tool de diya
                 temperature=0.3,

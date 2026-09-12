@@ -27,7 +27,7 @@ class StructureRequest(BaseModel):
 def structure_data(request: StructureRequest):
     try:
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-3.6-flash',
             contents=request.message,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",

@@ -41,7 +41,7 @@ def evaluate_risk(request: RiskRequest):
         combined_content = f"SUPPLIER: {request.supplier_name}\n\nCONTRACT/SLA TERMS:\n{request.contract_terms}\n\nPAST PERFORMANCE HISTORY:\n{request.past_performance_history}"
 
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-3.6-flash',
             contents=combined_content,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",

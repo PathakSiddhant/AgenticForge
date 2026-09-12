@@ -31,7 +31,7 @@ def chat_with_memory(request: ChatMemoryRequest):
 
         # Step B: AI ka ek "Chat Session" start karna purani memory ke saath
         chat = client.chats.create(
-            model='gemini-2.5-flash',
+            model='gemini-3.6-flash',
             config=types.GenerateContentConfig(
                 system_instruction="You are a friendly AI assistant with perfect session memory. Always pay attention to the user's past messages in this conversation.",
                 temperature=0.7

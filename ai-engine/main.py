@@ -881,7 +881,7 @@ def export_ai_memo(start_date: str, end_date: str):
         Format it professionally using Markdown headers, bullet points, and bold text. Keep it concise, actionable, and data-driven. Do not include placeholder text.
         """
         
-        model = genai.GenerativeModel('gemini-2.5-flash')
+        model = genai.GenerativeModel('gemini-3.6-flash')
         response = model.generate_content(prompt)
         memo_text = response.text
         
@@ -1027,7 +1027,7 @@ def chat_with_sdr(req: SDRChatRequest):
     """
     
     try:
-        model = genai.GenerativeModel('gemini-2.5-flash')
+        model = genai.GenerativeModel('gemini-3.6-flash')
         response = model.generate_content(prompt)
         ai_reply = response.text.strip()
         

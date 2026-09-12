@@ -27,7 +27,7 @@ def read_and_answer(request: DocumentRequest):
         combined_prompt = f"SOURCE DOCUMENT:\n{request.document_text}\n\nQUESTION:\n{request.question}"
 
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-3.6-flash',
             contents=combined_prompt,
             config=types.GenerateContentConfig(
                 system_instruction=sys_prompt,

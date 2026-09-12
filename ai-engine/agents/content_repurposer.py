@@ -43,7 +43,7 @@ def repurpose_content(request: RepurposeRequest):
         combined_content = f"CORE MESSAGE TO HIGHLIGHT: {request.core_message}\n\nSOURCE CONTENT:\n{request.source_content}"
 
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-3.6-flash',
             contents=combined_content,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",

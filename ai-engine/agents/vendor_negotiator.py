@@ -51,7 +51,7 @@ def generate_negotiation_scripts(request: NegotiationRequest):
         combined_content = f"VENDOR: {request.vendor_type}\nINITIAL QUOTE: ${request.initial_quote}\nTARGET BUDGET: ${request.target_budget}\nOUR LEVERAGE: {request.leverage}"
 
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-3.6-flash',
             contents=combined_content,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",

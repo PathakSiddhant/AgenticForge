@@ -41,7 +41,7 @@ def generate_outreach(request: OutreachRequest):
         combined_content = f"PROSPECT CONTEXT:\n{request.prospect_info}\n\nOUR PRODUCT/OFFER:\n{request.our_product}\n\nDESIRED TONE:\n{request.tone}"
 
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-3.6-flash',
             contents=combined_content,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",

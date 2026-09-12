@@ -32,7 +32,7 @@ def generate_warm_lead_content(lead_name, pain_point, budget):
     6. Return ONLY the HTML formatted text using <p> tags. No markdown code blocks like ```html.
     """
     try:
-        model = genai.GenerativeModel('gemini-2.5-flash')
+        model = genai.GenerativeModel('gemini-3.6-flash')
         response = model.generate_content(prompt)
         content = response.text.strip()
         # Clean markdown if Gemini adds it

@@ -41,7 +41,7 @@ def process_refund(request: RefundRequest):
         combined_content = f"COMPANY POLICY:\n{request.company_policy}\n\nPURCHASE DETAILS:\nAmount: ${request.purchase_amount}\nDays Since Purchase: {request.days_since_purchase} days\n\nCUSTOMER REASON:\n{request.customer_reason}"
 
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-3.6-flash',
             contents=combined_content,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",

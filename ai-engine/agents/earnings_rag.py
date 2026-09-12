@@ -37,7 +37,7 @@ def analyze_earnings(request: EarningsRequest):
         combined_content = f"FINANCIAL DOCUMENT:\n{request.document_text}\n\nUSER QUERY:\n{request.query}"
 
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-3.6-flash',
             contents=combined_content,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",

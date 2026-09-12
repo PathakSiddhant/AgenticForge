@@ -40,7 +40,7 @@ def generate_reply(request: ResponderRequest):
         combined_content = f"CUSTOMER NAME: {request.customer_name}\n\nCOMPANY POLICY:\n{request.company_policy}\n\nCUSTOMER MESSAGE:\n{request.customer_message}"
 
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-3.6-flash',
             contents=combined_content,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",

@@ -49,7 +49,7 @@ def score_lead_with_ai(lead_data: dict) -> dict:
     
     try:
         # Using Gemini 1.5 Flash for fast real-time processing
-        model = genai.GenerativeModel('gemini-2.5-flash')
+        model = genai.GenerativeModel('gemini-3.6-flash')
         response = model.generate_content(prompt)
         
         # Clean the response just in case Gemini adds markdown backticks

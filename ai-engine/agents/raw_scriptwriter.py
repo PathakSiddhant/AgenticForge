@@ -46,7 +46,7 @@ def generate_script(request: ScriptRequest):
         combined_content = f"TOPIC: {request.core_topic}\nSTARTING HOOK: {request.approved_hook}\nTARGET LENGTH: {request.target_length_minutes} minutes\nCREATOR VIBE: {request.creator_vibe}"
 
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-3.6-flash',
             contents=combined_content,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",

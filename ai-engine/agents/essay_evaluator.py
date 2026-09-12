@@ -39,7 +39,7 @@ def evaluate_essay(request: EvaluationRequest):
         combined_content = f"GRADING CRITERIA / RUBRIC:\n{request.grading_criteria}\n\nSTUDENT ESSAY:\n{request.essay_text}"
 
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-3.6-flash',
             contents=combined_content,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",

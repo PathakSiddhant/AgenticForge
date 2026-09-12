@@ -68,7 +68,7 @@ def extract_lead_from_email(email_body, sender_name, sender_email):
     """
     
     try:
-        model = genai.GenerativeModel('gemini-2.5-flash')
+        model = genai.GenerativeModel('gemini-3.6-flash')
         response = model.generate_content(prompt)
         text = response.text.strip()
         
