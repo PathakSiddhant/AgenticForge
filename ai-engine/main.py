@@ -902,8 +902,18 @@ def export_ai_memo(start_date: str, end_date: str):
 # ==========================================
 
 # 🌟 INITIALIZE PINECONE IN API
-pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY", "DUMMY_KEY"))
-index = pc.Index("agenticforge-index")
+# A bad/missing/expired PINECONE_API_KEY must never take the whole app down -
+# this used to run at import time with no guard, so one invalid key crashed
+# every single agent, not just the RAG-backed SDR chat that actually needs
+# Pinecone. The RAG search below already degrades gracefully to "no context
+# retrieved" on any exception; `index` being None just routes it there.
+try:
+    pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY", "DUMMY_KEY"))
+    index = pc.Index("agenticforge-index")
+except Exception as e:
+    print(f"⚠️ Pinecone init failed - RAG search will be disabled: {e}")
+    pc = None
+    index = None
 
 class SDRChatRequest(BaseModel):
     lead_id: int
